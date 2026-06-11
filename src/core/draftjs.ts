@@ -6,6 +6,24 @@
    아니면 null (DraftJS 아님). */
 
 export function tryExtractDraftJs(s: string): string | null {
-  void s;
-  throw new Error('TODO(M2): tryExtractDraftJs 구현');
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(s);
+  } catch {
+    return null; // JSON이 아니면 DraftJS 아님
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
+  const obj = parsed as Record<string, unknown>;
+  if (!('entityMap' in obj)) return null;
+  const blocks = obj['blocks'];
+  if (!Array.isArray(blocks)) return null;
+  const texts: string[] = [];
+  for (const block of blocks) {
+    if (typeof block !== 'object' || block === null) return null;
+    const text = (block as Record<string, unknown>)['text'];
+    if (typeof text !== 'string') return null; // 원소 하나라도 string text가 없으면 DraftJS 아님
+    texts.push(text);
+  }
+  // blocks가 비어 있으면 '' 반환 (DraftJS이긴 하므로 null이 아님)
+  return texts.join('\n');
 }
