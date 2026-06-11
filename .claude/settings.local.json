@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.allganize.ai)",
+      "PowerShell($r = Invoke-WebRequest -Uri \"https://docs.allganize.ai/api-reference.md\" -UseBasicParsing -TimeoutSec 30; \"STATUS: $\\($r.StatusCode\\)\"; \"LENGTH: $\\($r.Content.Length\\)\"; $r.Content.Substring\\(0, [Math]::Min\\(800, $r.Content.Length\\)\\))",
+      "PowerShell($r = Invoke-WebRequest -Uri \"https://docs.allganize.ai/llms.txt\" -UseBasicParsing -TimeoutSec 30; \"LENGTH: $\\($r.Content.Length\\)\"; $r.Content)",
+      "PowerShell($r = Invoke-WebRequest -Uri \"https://docs.allganize.ai/api-reference/authentication.md\" -UseBasicParsing -TimeoutSec 30; \"STATUS: $\\($r.StatusCode\\)\"; $r.Content.Substring\\(0, [Math]::Min\\(500, $r.Content.Length\\)\\))",
+      "PowerShell(\\(Get-Item \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\alli-generative-answer-api.md\"\\).Length; \\(Get-Content \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\alli-generative-answer-api.md\" | Measure-Object -Line\\).Lines)",
+      "PowerShell(\\(Get-Item \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\authentication.md\"\\).Length)",
+      "PowerShell(\\(Get-Item \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\answer-bot-api.md\"\\).Length; \\(Get-Content \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\answer-bot-api.md\" | Measure-Object -Line\\).Lines)",
+      "PowerShell(\\(Get-Item \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\alli-retrieval-api.md\"\\).Length; \\(Get-Content \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\alli-retrieval-api.md\" | Measure-Object -Line\\).Lines)",
+      "PowerShell(\\(Get-Item \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\alli-llm-app-market-api.md\"\\).Length)",
+      "PowerShell(\\(Get-Item \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\review-conversion-api.md\"\\).Length)",
+      "Bash(grep -c '^```' \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\alli-api.md\")",
+      "PowerShell(\\(Get-Item \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\sentiment-analysis-api.md\"\\).Length)",
+      "PowerShell(\\(Get-Item \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\integrated-api.md\"\\).Length)",
+      "PowerShell(\\(Get-Item \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\text-classification-api.md\"\\).Length; \\(Get-Content \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\text-classification-api.md\" | Measure-Object -Line\\).Lines)",
+      "PowerShell($lines = [System.IO.File]::ReadAllLines\\(\"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\answer-bot-api.md\"\\); $lines.Count; \"last line: [$\\($lines[-1]\\)]\"; $i=0; foreach\\($l in $lines\\){ $i++; if\\($l.Length -gt 2000\\){ \"line $i length $\\($l.Length\\): $\\($l.Substring\\(0,120\\)\\)...\" } })",
+      "WebSearch",
+      "WebFetch(domain:guide.allganize.ai)"
+    ]
+  }
+}
