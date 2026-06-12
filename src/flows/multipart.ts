@@ -385,5 +385,6 @@ export function render(container: HTMLElement): void | (() => void) {
   // 라우트 이탈 시 진행 중 스트림 중단
   return () => {
     activeAbort?.abort();
+    activeAbort = null;
   };
 }
