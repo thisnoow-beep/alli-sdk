@@ -86,7 +86,7 @@ function chatRow(who: 'USER' | 'APP', text: string): HTMLElement {
 /** raw 뷰 요청 본문 표시용 — multipart 파트 요약 */
 function partsSummary(parts: MultipartPart[]): string {
   return [
-    'multipart/form-data — boundary는 전송 시 자동 생성 (§7-3)',
+    'multipart/form-data — boundary는 전송 시 자동 생성',
     ...parts.map((p) =>
       p.kind === 'text'
         ? `${p.name} (text): ${p.value ?? ''}`
@@ -270,7 +270,7 @@ export function render(container: HTMLElement): void | (() => void) {
   const manualField = field(
     '대화 ID 직접 입력 (폴백)',
     el('div', { class: 'row' }, manualInput, button('적용', { small: true, onClick: applyManualId })),
-    { hint: '스트림 응답 스키마가 문서화돼 있지 않아(§9-2) ID를 자동으로 못 찾을 수 있습니다 — Raw 뷰에서 확인해 입력하세요' },
+    { hint: '응답 형식이 환경마다 달라 ID를 자동으로 못 찾을 수 있습니다 — Raw 뷰에서 확인해 입력하세요' },
   );
 
   // ---- 입력 영역: tabsBar 4모드 ----
@@ -632,9 +632,9 @@ export function render(container: HTMLElement): void | (() => void) {
     }
 
     historyPanel.append(
-      el('div', { class: 't-caption muted' }, '대화 단건 — 메타 + 최근 챗 20개 (§5.12)'),
+      el('div', { class: 't-caption muted' }, '대화 단건 — 메타 + 최근 챗 20개'),
       metaSlot,
-      el('div', { class: 'hairline-top', style: 'padding-top: 16px;' }, el('div', { class: 't-caption muted' }, '대화 전체 메시지 — pageNo 페이징 (§5.13)')),
+      el('div', { class: 'hairline-top', style: 'padding-top: 16px;' }, el('div', { class: 't-caption muted' }, '대화 전체 메시지 — pageNo 페이징')),
       el('div', { class: 'row' }, el('span', { class: 'field-label' }, 'pageNo'), pageInput, prevBtn, nextBtn, loadBtn),
       chatsSlot,
     );

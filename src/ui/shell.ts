@@ -5,6 +5,7 @@ import { isMockMode } from '../state/client';
 import { badge, button, maskKey } from './widgets';
 
 const NAV_ITEMS: { path: string; label: string }[] = [
+  { path: '/setup', label: '초기 설정' },
   { path: '/connect', label: '연결' },
   { path: '/apps', label: '앱' },
   { path: '/answer', label: '답변 생성' },

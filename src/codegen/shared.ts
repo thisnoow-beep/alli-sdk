@@ -133,12 +133,13 @@ export function fileNameOf(part: MultipartPart): string | undefined {
 
 /* ---------- 공통 문구 ---------- */
 
-/** 에러 코드표 요약 (SSOT §3.3) — 변형별 주석 마커를 앞에 붙여 사용 (§7-4) */
+/** 에러 코드표 요약 (SSOT §3.3) — 변형별 주석 마커를 앞에 붙여 사용 (§7-4).
+    생성 코드에 들어가는 문구이므로 SSOT 절 번호 등 내부 문서 참조 금지 — 그 자체로 읽혀야 한다. */
 export const ERROR_TABLE_LINES: readonly string[] = [
-  '에러 코드표 (SSOT §3.3) — 응답 본문의 code/error/errors 키 해석:',
+  'Alli API 에러 코드표 — 응답 본문의 code/error/errors 키 해석:',
   '  7001 잘못된 API 키 (sdkKey와 혼동 주의) / 7002 요청 본문 JSON 디코딩 실패',
   '  7003 파라미터 누락·형식 오류 / 7004 결제(과금) 오류',
-  "  errors에 'Expecting value' 포함 시 inputs 누락/형식 오류 가능성 (SSOT §9-1)",
+  "  errors에 'Expecting value' 포함 시 inputs 누락/형식 오류 가능성",
 ];
 
 export const GA_FOLLOW_UP = '방금 답변을 더 자세히 설명해줘';
@@ -146,7 +147,7 @@ export const CONV_FOLLOW_UP = '여기에 후속 메시지를 입력하세요';
 
 /* ---------- 생성 JS에 동봉하는 헬퍼 스니펫 ---------- */
 
-export const JS_ENCODE_OWN_USER_ID = `// 비ASCII OWN-USER-ID/USER-EMAIL → 'base64:' + base64(utf8) 변환 (SSOT §3.2, §7-2)
+export const JS_ENCODE_OWN_USER_ID = `// 비ASCII OWN-USER-ID/USER-EMAIL → 'base64:' + base64(utf8) 변환 — Alli API 헤더 규칙
 function encodeOwnUserId(id) {
   if (/^[\\x00-\\x7F]*$/.test(id)) return id; // ASCII는 그대로
   const bytes = new TextEncoder().encode(id);
@@ -155,7 +156,7 @@ function encodeOwnUserId(id) {
   return "base64:" + btoa(bin);
 }`;
 
-export const JS_RAISE_FOR_STATUS = `// 에러 처리 — HTTP status 분기 + 본문 code/error/errors 해석 (SSOT §3.3, §7-4)
+export const JS_RAISE_FOR_STATUS = `// 에러 처리 — HTTP status 분기 + 본문 code/error/errors 해석
 // 코드표: 7001 잘못된 API 키(sdkKey와 혼동 주의) / 7002 요청 본문 JSON 디코딩 실패
 //        7003 파라미터 누락·형식 오류 / 7004 결제(과금) 오류
 async function raiseForStatus(res) {
@@ -174,7 +175,7 @@ async function raiseForStatus(res) {
     else if (body.error) detail = String(body.error); // 비표준 형태: { "error": "..." }
     else if (body.errors) {
       detail = String(body.errors); // 비표준 형태: { "errors": "..." }
-      // 'Expecting value'가 보이면 inputs 누락/형식 오류 가능성이 크다 (SSOT §9-1)
+      // 'Expecting value'가 보이면 inputs 누락/형식 오류 가능성이 크다
       if (detail.includes("Expecting value")) detail += " — inputs 누락/형식 오류 가능성";
     } else if (body.message) detail = String(body.message);
   } catch {
@@ -183,7 +184,7 @@ async function raiseForStatus(res) {
   throw new Error("HTTP " + res.status + ": " + detail);
 }`;
 
-export const JS_EXTRACT_JSON_VALUES = `// 스트림 버퍼에서 완성된 최상위 JSON 값만 잘라 파싱 (SSOT §3.5 — SSE 아님, JSON 조각 스트림)
+export const JS_EXTRACT_JSON_VALUES = `// 스트림 버퍼에서 완성된 최상위 JSON 값만 잘라 파싱 (Alli 스트리밍은 SSE가 아니라 JSON 조각 스트림)
 // 중괄호 깊이 추적 — 문자열 내부의 {}/[]와 \\" 이스케이프는 깊이 계산에서 제외한다.
 // 미완성 조각은 rest로 돌려줘 다음 청크와 이어 붙인다.
 function extractJsonValues(buffer) {
@@ -212,7 +213,7 @@ function extractJsonValues(buffer) {
   return { values, rest: buffer.slice(start >= 0 ? start : consumed) };
 }`;
 
-export const JS_FIND_CONVERSATION_ID = `// conversationId deep-scan — 스트리밍 응답 스키마 미문서화(SSOT §9-2)로 트리 전체를 탐색.
+export const JS_FIND_CONVERSATION_ID = `// conversationId deep-scan — 응답 스키마가 공식 문서에 없어 트리 전체를 탐색.
 // 실 응답 확인 후 정확한 경로로 고정하기를 권장.
 function findConversationId(value) {
   if (value === null || typeof value !== "object") return null;
@@ -239,7 +240,7 @@ function extractNodeId(value) {
 /* ---------- 브라우저·Node 공용 JavaScript 빌더 ---------- */
 
 function jsHeadersBlock(ctx: CodegenContext): string {
-  const L = ['// 공통 헤더 — API-KEY 필수 (SSOT §3.2)', 'const HEADERS = {', '  "API-KEY": API_KEY,'];
+  const L = ['// 공통 헤더 — API-KEY 필수', 'const HEADERS = {', '  "API-KEY": API_KEY,'];
   if (ctx.ownUserId) {
     L.push(`  "OWN-USER-ID": encodeOwnUserId(${jsStr(ctx.ownUserId)}), // 비ASCII는 base64: 로 자동 변환`);
   }
@@ -256,7 +257,7 @@ function jsFetchJson(spec: RequestSpec, pad: string): string[] {
   return [
     `${pad}const res = await fetch(${jsUrlOf(spec)}, {`,
     `${pad}  method: ${jsStr(spec.method)},`,
-    `${pad}  headers: { ...HEADERS, "Content-Type": "application/json" }, // JSON 본문만 Content-Type 명시 (§7-3)`,
+    `${pad}  headers: { ...HEADERS, "Content-Type": "application/json" }, // JSON 본문만 Content-Type 명시`,
     `${pad}  body: JSON.stringify(payload),`,
     `${pad}});`,
   ];
@@ -266,7 +267,7 @@ function jsFetchMultipart(spec: RequestSpec, pad: string): string[] {
   return [
     `${pad}const res = await fetch(${jsUrlOf(spec)}, {`,
     `${pad}  method: ${jsStr(spec.method)},`,
-    `${pad}  headers: HEADERS, // multipart는 Content-Type 직접 지정 금지 — FormData가 boundary 자동 설정 (§7-3)`,
+    `${pad}  headers: HEADERS, // multipart는 Content-Type 직접 지정 금지 — FormData가 boundary 자동 설정`,
     `${pad}  body: fd,`,
     `${pad}});`,
   ];
@@ -285,7 +286,7 @@ function jsFileInputDecl(parts: MultipartPart[], target: JsTarget, pad: string):
   return [`${pad}// <input type=file>에서:`, `${pad}const fileInput = document.querySelector('input[type="file"]');`];
 }
 
-/** fd.append(...) 라인들 — parts 순서 그대로 1:1 (§7-7, 패리티 대상) */
+/** fd.append(...) 라인들 — parts 순서 그대로 1:1 (§7-7 패리티 대상) */
 function jsPartAppends(parts: MultipartPart[], target: JsTarget, pad: string): string[] {
   const L: string[] = [];
   let fileIdx = 0;
@@ -335,7 +336,7 @@ function jsStreamConsume(target: JsTarget, pad: string, onValue: string[]): stri
 function jsSyncConsume(spec: RequestSpec, pad: string): string[] {
   const L = [`${pad}await raiseForStatus(res);`];
   if (spec.method === 'DELETE') {
-    L.push(`${pad}console.log("삭제 완료 — HTTP", res.status); // 200 빈 본문 (SSOT §5.10)`);
+    L.push(`${pad}console.log("삭제 완료 — HTTP", res.status); // 삭제 성공은 200 + 빈 본문`);
   } else {
     L.push(`${pad}const data = await res.json();`, `${pad}console.log(data);`);
   }
@@ -358,7 +359,7 @@ function jsNoneMain(spec: RequestSpec, target: JsTarget): string {
     L.push(...jsFetchJson(spec, '  '));
   } else if (spec.body.kind === 'multipart') {
     L.push(...jsFileInputDecl(spec.body.parts, target, '  '));
-    L.push('  const fd = new FormData(); // parts 순서 그대로 1:1 (§7-7)');
+    L.push('  const fd = new FormData(); // 화면에서 구성한 파트 순서 그대로 1:1');
     L.push(...jsPartAppends(spec.body.parts, target, '  '));
     L.push('');
     L.push(...jsFetchMultipart(spec, '  '));
@@ -366,7 +367,7 @@ function jsNoneMain(spec: RequestSpec, target: JsTarget): string {
     L.push(...jsFetchBare(spec, '  '));
   }
   if (spec.stream) {
-    L.push(...jsStreamConsume(target, '  ', ['console.log(v); // JSON 조각 — sync와 동일 포맷 (SSOT §3.5)']));
+    L.push(...jsStreamConsume(target, '  ', ['console.log(v); // JSON 조각 — sync 응답과 동일 포맷']));
   } else {
     L.push(...jsSyncConsume(spec, '  '));
   }
@@ -384,7 +385,7 @@ function jsGaThreadLoop(spec: RequestSpec, target: JsTarget): string {
   L.push('// 멀티턴 베이스 페이로드 — query/threadId는 ask() 인자로 주입');
   L.push(`const BASE_PAYLOAD = ${renderJsValue(base)};`);
   L.push('');
-  L.push('// ⚠️ OWN-USER-ID 헤더 없으면 threadId(멀티턴)가 비활성화됩니다 (SSOT §3.2)');
+  L.push('// ⚠️ OWN-USER-ID 헤더 없으면 threadId(멀티턴)가 비활성화됩니다');
   L.push('// ask(query, threadId) → { answer, threadId } — 응답의 threadId를 후속 호출에 재사용');
   L.push('async function ask(query, threadId) {');
   L.push('  const payload = { ...BASE_PAYLOAD, query };');
@@ -395,7 +396,7 @@ function jsGaThreadLoop(spec: RequestSpec, target: JsTarget): string {
     L.push('  let nextThreadId = threadId ?? null;');
     L.push(
       ...jsStreamConsume(target, '  ', [
-        'if (v && typeof v === "object") { // JSON 조각 — sync와 동일 포맷 (SSOT §3.5)',
+        'if (v && typeof v === "object") { // JSON 조각 — sync 응답과 동일 포맷',
         '  if (v.answer !== undefined) answer = v.answer;',
         '  if (typeof v.threadId === "string") nextThreadId = v.threadId;',
         '}',
@@ -447,7 +448,7 @@ function jsConversationLoop(spec: RequestSpec, target: JsTarget): string {
   L.push('  let foundId = conversationId ?? null;');
   L.push(
     ...jsStreamConsume(target, '  ', [
-      'console.log(v); // JSON 조각 — sync와 동일 포맷 (SSOT §3.5)',
+      'console.log(v); // JSON 조각 — sync 응답과 동일 포맷',
       'if (!foundId) foundId = findConversationId(v);',
     ]),
   );
@@ -455,10 +456,10 @@ function jsConversationLoop(spec: RequestSpec, target: JsTarget): string {
   L.push('}');
   L.push('');
   L.push('async function main() {');
-  L.push('  // 1) conversationId 없이 새 대화 시작 (SSOT Flow 6)');
+  L.push('  // 1) conversationId 없이 새 대화 시작 — 응답 스트림이 새 conversationId를 발급');
   L.push(`  const conversationId = await sendMessage(${jsStr(firstMessage)});`);
   L.push('  if (!conversationId) {');
-  L.push('    throw new Error("스트림에서 conversationId를 찾지 못했습니다 — 실 응답(raw)을 확인하세요 (SSOT §9-2)");');
+  L.push('    throw new Error("스트림에서 conversationId를 찾지 못했습니다 — 응답 위치가 환경마다 다를 수 있으니 실제 응답 본문에서 확인하세요");');
   L.push('  }');
   L.push('  console.log("conversationId:", conversationId);');
   L.push('');
@@ -491,15 +492,15 @@ function jsKbReplace(spec: RequestSpec, w: KbReplaceWrapper, target: JsTarget): 
   L.push('  await raiseForStatus(res);');
   L.push('}');
   L.push('');
-  L.push('// 문서 교체 루틴 — 순서: 업로드 → 완료 확인 → 삭제 (역순 금지 — 문서 소실/검색 공백, SSOT Flow 5)');
+  L.push('// 문서 교체 루틴 — 순서: 업로드 → 완료 확인 → 삭제 (먼저 지우면 문서 소실/검색 공백이 생기므로 역순 금지)');
   L.push('async function replaceDocument() {');
   L.push('  // 1) 새 파일 업로드 (구 노드의 hashtags 승계, 같은 폴더 지정 권장)');
   L.push(...jsFileInputDecl(parts, target, '  '));
-  L.push('  const fd = new FormData(); // parts 순서 그대로 1:1 (§7-7)');
+  L.push('  const fd = new FormData(); // 화면에서 구성한 파트 순서 그대로 1:1');
   L.push(...jsPartAppends(parts, target, '  '));
   L.push(`  const upRes = await fetch(${jsUrlOf(spec)}, {`);
   L.push(`    method: ${jsStr(spec.method)},`);
-  L.push('    headers: HEADERS, // multipart는 Content-Type 직접 지정 금지 — FormData가 boundary 자동 설정 (§7-3)');
+  L.push('    headers: HEADERS, // multipart는 Content-Type 직접 지정 금지 — FormData가 boundary 자동 설정');
   L.push('    body: fd,');
   L.push('  });');
   L.push('  await raiseForStatus(upRes);');
@@ -507,7 +508,7 @@ function jsKbReplace(spec: RequestSpec, w: KbReplaceWrapper, target: JsTarget): 
   L.push('  if (!newNodeId) throw new Error("업로드 응답에서 새 노드 id를 찾지 못했습니다");');
   L.push('  console.log("업로드 완료 — 새 노드:", newNodeId);');
   L.push('');
-  L.push('  // 2) ingestion_status 폴링 (SSOT §5.11) — 성공: completed/post_completed, 실패: parsing_fail/post_parsing_fail');
+  L.push('  // 2) ingestion_status 폴링 — 성공: completed/post_completed, 실패: parsing_fail/post_parsing_fail');
   L.push('  //    initializing/parsing/retrying/post_retrying 등 진행 상태는 계속 대기 (백오프)');
   L.push('  const deadline = Date.now() + POLL_TIMEOUT_MS;');
   L.push('  let interval = POLL_INITIAL_MS;');
@@ -547,18 +548,27 @@ export function renderJsCode(plan: CodegenPlan, ctx: CodegenContext, target: JsT
   const chunks: string[] = [];
 
   // 1) 프롤로그 — API 키 취급 방식이 두 변형의 핵심 차이 (§7-1)
+  //    공통 전제: 키는 백엔드 환경변수 ALLI_API_KEY에만 존재 (초기 설정 화면에서 사전 안내)
   if (target === 'browser') {
     chunks.push(
       [
-        '/* ⚠️ 운영 브라우저 코드에 API 키를 넣지 마세요 — 반드시 서버를 경유시키세요.',
-        '   이 코드는 테스트 전용입니다. */',
+        '/* 전제: API 키는 백엔드 환경변수 ALLI_API_KEY에만 둡니다 (초기 설정 가이드 참고).',
+        '   브라우저 소스/번들에 키 리터럴을 넣지 마세요 — 페이지를 서빙하는 백엔드가',
+        '   환경변수 값을 읽어 주입(예: 서버 템플릿이 globalThis.ALLI_API_KEY 설정)한다는 전제입니다.',
+        '   운영에서는 백엔드 프록시 경유를 권장합니다 — 키가 브라우저로 내려가지 않습니다. */',
       ].join('\n'),
     );
-    chunks.push([`const BASE_URL = ${jsStr(trimBase(ctx.baseUrl))};`, 'const API_KEY = "YOUR_API_KEY";'].join('\n'));
+    chunks.push(
+      [
+        `const BASE_URL = ${jsStr(trimBase(ctx.baseUrl))};`,
+        'const API_KEY = globalThis.ALLI_API_KEY; // 백엔드가 환경변수에서 읽어 주입한 값 — 소스에 키 리터럴 금지',
+        'if (!API_KEY) throw new Error("API 키가 주입되지 않았습니다 — 백엔드가 환경변수 ALLI_API_KEY 값을 주입해야 합니다 (초기 설정 가이드 참고)"); // fail-fast',
+      ].join('\n'),
+    );
   } else {
     const pro = [
       '// Node 20+ — 내장 fetch/FormData/Blob 사용, 외부 패키지(form-data 등) 불필요',
-      '// 먼저: export ALLI_API_KEY=발급받은키  (실행: node script.mjs)',
+      '// 전제: 환경변수 ALLI_API_KEY 설정 완료 (초기 설정 가이드 참고) — 실행: node script.mjs',
     ];
     if (hasFileParts) {
       pro.push('', 'import { readFile } from "node:fs/promises"; // Node 20+ 네이티브 — 파일 첨부용');
@@ -568,7 +578,7 @@ export function renderJsCode(plan: CodegenPlan, ctx: CodegenContext, target: JsT
       [
         `const BASE_URL = ${jsStr(trimBase(ctx.baseUrl))};`,
         'const API_KEY = process.env.ALLI_API_KEY;',
-        'if (!API_KEY) throw new Error("환경변수 ALLI_API_KEY가 설정되지 않았습니다 — 먼저: export ALLI_API_KEY=발급받은키"); // fail-fast',
+        'if (!API_KEY) throw new Error("환경변수 ALLI_API_KEY가 설정되지 않았습니다 — 초기 설정 가이드를 참고하세요"); // fail-fast',
       ].join('\n'),
     );
   }

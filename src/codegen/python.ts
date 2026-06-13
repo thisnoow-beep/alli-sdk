@@ -24,12 +24,12 @@ import {
 /* ---------- 생성 Python에 동봉하는 헬퍼 스니펫 ---------- */
 
 const PY_ENCODE_OWN_USER_ID = `def encode_own_user_id(value):
-    """비ASCII OWN-USER-ID/USER-EMAIL → 'base64:' + base64(utf-8) 변환 (SSOT §3.2, §7-2)"""
+    """비ASCII OWN-USER-ID/USER-EMAIL → 'base64:' + base64(utf-8) 변환 — Alli API 헤더 규칙"""
     if value.isascii():
         return value  # ASCII는 그대로
     return "base64:" + base64.b64encode(value.encode("utf-8")).decode("ascii")`;
 
-const PY_RAISE_FOR_API_ERROR = `# 에러 처리 — HTTP status 분기 + 본문 code/error/errors 해석 (SSOT §3.3, §7-4)
+const PY_RAISE_FOR_API_ERROR = `# 에러 처리 — HTTP status 분기 + 본문 code/error/errors 해석
 # 코드표: 7001 잘못된 API 키(sdkKey와 혼동 주의) / 7002 요청 본문 JSON 디코딩 실패
 #        7003 파라미터 누락·형식 오류 / 7004 결제(과금) 오류
 ERROR_CODES = {
@@ -56,14 +56,14 @@ def raise_for_api_error(res):
         elif "errors" in body:  # 비표준 형태: { "errors": "..." }
             detail = str(body["errors"])
             if "Expecting value" in detail:
-                # inputs 누락/형식 오류 가능성이 크다 (SSOT §9-1)
+                # inputs 누락/형식 오류 가능성이 크다
                 detail += " — inputs 누락/형식 오류 가능성"
         elif "message" in body:
             detail = str(body["message"])
     raise RuntimeError(f"HTTP {res.status_code}: {detail}")`;
 
 const PY_EXTRACT_JSON_VALUES = `def extract_json_values(buffer):
-    """스트림 버퍼에서 완성된 최상위 JSON 값만 잘라 파싱 (SSOT §3.5 — SSE 아님, JSON 조각 스트림).
+    """스트림 버퍼에서 완성된 최상위 JSON 값만 잘라 파싱 (Alli 스트리밍은 SSE가 아니라 JSON 조각 스트림).
     중괄호 깊이 추적 — 문자열 내부의 중괄호와 백슬래시 이스케이프는 깊이 계산에서 제외.
     미완성 조각은 그대로 돌려줘 다음 청크와 이어 붙인다."""
     values = []
@@ -95,7 +95,7 @@ const PY_EXTRACT_JSON_VALUES = `def extract_json_values(buffer):
     return values, buffer[start if start >= 0 else consumed:]`;
 
 const PY_FIND_CONVERSATION_ID = `def find_conversation_id(value):
-    """conversationId deep-scan — 스트리밍 응답 스키마 미문서화(SSOT §9-2)로 트리 전체를 탐색.
+    """conversationId deep-scan — 응답 스키마가 공식 문서에 없어 트리 전체를 탐색.
     실 응답 확인 후 정확한 경로로 고정하기를 권장."""
     if isinstance(value, dict):
         if isinstance(value.get("conversationId"), str):
@@ -133,7 +133,7 @@ const PY_EXTRACT_NODE_ID = `def extract_node_id(value):
 /* ---------- 조립 블록 ---------- */
 
 function pyHeadersBlock(ctx: CodegenContext): string {
-  const L = ['# 공통 헤더 — API-KEY 필수 (SSOT §3.2)', 'HEADERS = {', '    "API-KEY": API_KEY,'];
+  const L = ['# 공통 헤더 — API-KEY 필수', 'HEADERS = {', '    "API-KEY": API_KEY,'];
   if (ctx.ownUserId) {
     L.push(`    "OWN-USER-ID": encode_own_user_id(${pyStr(ctx.ownUserId)}),  # 비ASCII는 base64: 로 자동 변환`);
   }
@@ -154,16 +154,16 @@ function pyFetchLines(spec: RequestSpec, pad: string, varName: string, opts: PyC
   const L = [`${pad}${varName} = requests.${method}(`];
   L.push(`${pad}    f"{BASE_URL}${pyFStr(pathWithQuery(spec))}",`);
   if (opts.json) {
-    L.push(`${pad}    headers={**HEADERS, "Content-Type": "application/json"},  # JSON 본문만 Content-Type 명시 (§7-3)`);
+    L.push(`${pad}    headers={**HEADERS, "Content-Type": "application/json"},  # JSON 본문만 Content-Type 명시`);
     L.push(`${pad}    json=payload,`);
   } else if (opts.multipart) {
-    L.push(`${pad}    headers=HEADERS,  # multipart — Content-Type 직접 지정 금지 (requests가 boundary 자동 설정, §7-3)`);
+    L.push(`${pad}    headers=HEADERS,  # multipart — Content-Type 직접 지정 금지 (requests가 boundary 자동 설정)`);
     L.push(`${pad}    data=data,`);
     L.push(`${pad}    files=files,`);
   } else {
     L.push(`${pad}    headers=HEADERS,`);
   }
-  if (opts.stream) L.push(`${pad}    stream=True,  # 응답은 JSON 조각 스트림 (SSE 아님 — SSOT §3.5)`);
+  if (opts.stream) L.push(`${pad}    stream=True,  # 응답은 SSE가 아니라 JSON 조각 스트림`);
   L.push(`${pad})`);
   return L;
 }
@@ -173,7 +173,7 @@ function pyMultipartVars(parts: MultipartPart[], pad: string): string[] {
   const texts = parts.filter((p) => p.kind === 'text');
   const files = parts.filter((p) => p.kind === 'file');
   const L: string[] = [];
-  L.push(`${pad}data = {  # 텍스트 파트 — parts 순서 그대로 (§7-7)`);
+  L.push(`${pad}data = {  # 텍스트 파트 — 화면에서 구성한 순서 그대로`);
   for (const p of texts) L.push(`${pad}    ${pyStr(p.name)}: ${pyStr(p.value ?? '')},`);
   L.push(`${pad}}`);
   L.push(`${pad}files = [  # 파일 파트 — 같은 필드명 반복 가능`);
@@ -217,12 +217,12 @@ function pyNoneMain(spec: RequestSpec): string {
   }
   L.push(...pyFetchLines(spec, '', 'res', { json: isJson, multipart: isMultipart, stream: spec.stream }));
   if (spec.stream) {
-    L.push(...pyStreamConsume('', 'res', ['print(v)  # JSON 조각 — sync와 동일 포맷 (SSOT §3.5)']));
+    L.push(...pyStreamConsume('', 'res', ['print(v)  # JSON 조각 — sync 응답과 동일 포맷']));
   } else {
     L.push('raise_for_api_error(res)');
     L.push(
       spec.method === 'DELETE'
-        ? 'print("삭제 완료 — HTTP", res.status_code)  # 200 빈 본문 (SSOT §5.10)'
+        ? 'print("삭제 완료 — HTTP", res.status_code)  # 삭제 성공은 200 + 빈 본문'
         : 'print(res.json())',
     );
   }
@@ -240,7 +240,7 @@ function pyGaThreadLoop(spec: RequestSpec): string {
   L.push(`BASE_PAYLOAD = ${renderPyValue(base)}`);
   L.push('');
   L.push('');
-  L.push('# ⚠️ OWN-USER-ID 헤더 없으면 threadId(멀티턴)가 비활성화됩니다 (SSOT §3.2)');
+  L.push('# ⚠️ OWN-USER-ID 헤더 없으면 threadId(멀티턴)가 비활성화됩니다');
   L.push('def ask(query, thread_id=None):');
   L.push('    """ask(query, thread_id) → {"answer", "threadId"} — 응답의 threadId를 후속 호출에 재사용"""');
   L.push('    payload = {**BASE_PAYLOAD, "query": query}');
@@ -252,7 +252,7 @@ function pyGaThreadLoop(spec: RequestSpec): string {
     L.push('    next_thread_id = thread_id');
     L.push(
       ...pyStreamConsume('    ', 'res', [
-        'if isinstance(v, dict):  # JSON 조각 — sync와 동일 포맷 (SSOT §3.5)',
+        'if isinstance(v, dict):  # JSON 조각 — sync 응답과 동일 포맷',
         '    answer = v.get("answer", answer)',
         '    next_thread_id = v.get("threadId", next_thread_id)',
       ]),
@@ -284,7 +284,7 @@ function pyConversationLoop(spec: RequestSpec): string {
   const firstMessage = messagePart?.value || '안녕하세요';
   const L: string[] = [];
   L.push('def send_message(message, conversation_id=None):');
-  L.push('    """메시지 전송 + 스트림 소비 + conversationId 회수 (SSOT Flow 6)"""');
+  L.push('    """메시지 전송 + 스트림 소비 + conversationId 회수"""');
   L.push('    data = {"message": message}');
   L.push('    files = []  # 파일 없는 호출은 일반 form 전송 — multipart가 필요하면 (이름, (None, 값)) 텍스트 튜플 사용');
   L.push('    if conversation_id:');
@@ -307,7 +307,7 @@ function pyConversationLoop(spec: RequestSpec): string {
   L.push('    found_id = conversation_id');
   L.push(
     ...pyStreamConsume('    ', 'res', [
-      'print(v)  # JSON 조각 — sync와 동일 포맷 (SSOT §3.5)',
+      'print(v)  # JSON 조각 — sync 응답과 동일 포맷',
       'if not found_id:',
       '    found_id = find_conversation_id(v)',
     ]),
@@ -315,10 +315,10 @@ function pyConversationLoop(spec: RequestSpec): string {
   L.push('    return found_id');
   L.push('');
   L.push('');
-  L.push('# 1) conversationId 없이 새 대화 시작 (SSOT Flow 6)');
+  L.push('# 1) conversationId 없이 새 대화 시작 — 응답 스트림이 새 conversationId를 발급');
   L.push(`conversation_id = send_message(${pyStr(firstMessage)})`);
   L.push('if not conversation_id:');
-  L.push('    raise RuntimeError("스트림에서 conversationId를 찾지 못했습니다 — 실 응답(raw)을 확인하세요 (SSOT §9-2)")');
+  L.push('    raise RuntimeError("스트림에서 conversationId를 찾지 못했습니다 — 응답 위치가 환경마다 다를 수 있으니 실제 응답 본문에서 확인하세요")');
   L.push('print("conversationId:", conversation_id)');
   L.push('');
   L.push('# 2) 후속 메시지 루프 — conversationId를 유지한 채 반복 전송');
@@ -344,7 +344,7 @@ function pyKbReplace(spec: RequestSpec, w: KbReplaceWrapper): string {
   L.push('');
   L.push('');
   L.push('def replace_document():');
-  L.push('    """문서 교체 루틴 — 순서: 업로드 → 완료 확인 → 삭제 (역순 금지 — 문서 소실/검색 공백, SSOT Flow 5)"""');
+  L.push('    """문서 교체 루틴 — 순서: 업로드 → 완료 확인 → 삭제 (먼저 지우면 문서 소실/검색 공백이 생기므로 역순 금지)"""');
   L.push('    # 1) 새 파일 업로드 (구 노드의 hashtags 승계, 같은 폴더 지정 권장)');
   L.push(...pyMultipartVars(multipartParts(spec), '    '));
   L.push(...pyFetchLines(spec, '    ', 'res', { multipart: true }));
@@ -354,7 +354,7 @@ function pyKbReplace(spec: RequestSpec, w: KbReplaceWrapper): string {
   L.push('        raise RuntimeError("업로드 응답에서 새 노드 id를 찾지 못했습니다")');
   L.push('    print("업로드 완료 — 새 노드:", new_node_id)');
   L.push('');
-  L.push('    # 2) ingestion_status 폴링 (SSOT §5.11) — 성공: completed/post_completed, 실패: parsing_fail/post_parsing_fail');
+  L.push('    # 2) ingestion_status 폴링 — 성공: completed/post_completed, 실패: parsing_fail/post_parsing_fail');
   L.push('    #    initializing/parsing/retrying/post_retrying 등 진행 상태는 계속 대기 (백오프)');
   L.push('    deadline = time.monotonic() + POLL_TIMEOUT_S');
   L.push('    interval = POLL_INITIAL_S');
@@ -402,7 +402,7 @@ function renderPython(plan: CodegenPlan, ctx: CodegenContext): string {
   const chunks: string[] = [];
   chunks.push(
     [
-      '# Python (requests) — 먼저: export ALLI_API_KEY=발급받은키',
+      '# Python (requests) — 전제: 환경변수 ALLI_API_KEY 설정 완료 (초기 설정 가이드 참고)',
       '# 의존성: pip install requests',
       '',
       ...imports,
@@ -413,7 +413,7 @@ function renderPython(plan: CodegenPlan, ctx: CodegenContext): string {
   chunks.push(
     [
       `BASE_URL = ${pyStr(trimBase(ctx.baseUrl))}`,
-      'API_KEY = os.environ["ALLI_API_KEY"]  # 미설정이면 KeyError로 즉시 실패 (fail-fast)',
+      'API_KEY = os.environ["ALLI_API_KEY"]  # 미설정이면 KeyError로 즉시 실패 (fail-fast) — 초기 설정 가이드 참고',
     ].join('\n'),
   );
   if (needsEncode) chunks.push(PY_ENCODE_OWN_USER_ID);

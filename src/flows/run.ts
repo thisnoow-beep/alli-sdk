@@ -8,7 +8,7 @@ import { buildUrl, type RequestSpec } from '../core/request-spec';
 import type { AlliClient } from '../core/client';
 import type { AppType, Citation, Clue, RunAppBody, RunResponse } from '../core/types';
 import { deepFindConversationId, extractRunMessages } from '../core/extract';
-import { session } from '../state/session';
+import { session, isConnected } from '../state/session';
 import { getClient } from '../state/client';
 import { selectedApp } from '../state/selection';
 import { buildInputs, loadVarDefs, saveVarDefs } from '../state/app-vars';
@@ -354,6 +354,13 @@ export function render(container: HTMLElement): void {
 
   async function run(): Promise<void> {
     if (running) return;
+
+    if (!isConnected()) {
+      clear(resultSlot);
+      clear(rawSlot);
+      resultSlot.appendChild(banner('연결되지 않았습니다 — 연결 화면에서 API 키를 먼저 검증하세요', 'warn'));
+      return;
+    }
 
     // 1. 입력 변수 검증 (정의 기준 — 필수/JSON 형식). 정의가 없으면 inputs:{}로 그대로 전송(§9-1 서버 에러 재현 경로)
     const { inputs, errors } = buildInputs(kv.getDefs(), kv.getValues());

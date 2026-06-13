@@ -17,7 +17,9 @@
       "PowerShell(\\(Get-Item \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\text-classification-api.md\"\\).Length; \\(Get-Content \"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\text-classification-api.md\" | Measure-Object -Line\\).Lines)",
       "PowerShell($lines = [System.IO.File]::ReadAllLines\\(\"C:\\\\Projects\\\\alli-SDK\\\\docs\\\\api-reference\\\\en\\\\answer-bot-api.md\"\\); $lines.Count; \"last line: [$\\($lines[-1]\\)]\"; $i=0; foreach\\($l in $lines\\){ $i++; if\\($l.Length -gt 2000\\){ \"line $i length $\\($l.Length\\): $\\($l.Substring\\(0,120\\)\\)...\" } })",
       "WebSearch",
-      "WebFetch(domain:guide.allganize.ai)"
+      "WebFetch(domain:guide.allganize.ai)",
+      "Bash(Get-ChildItem -Path C:\\\\Projects\\\\alli-SDK -Recurse -Force)",
+      "Bash(Select-Object FullName, PSIsContainer)"
     ]
   }
 }

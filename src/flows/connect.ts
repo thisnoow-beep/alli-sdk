@@ -1,13 +1,13 @@
 /* Flow 1 — API Key 검증 (SSOT §4 Flow 1)
-   Base URL(US/JA/커스텀) + API 키 + (권장) OWN-USER-ID를 받아 GET /v2/projects로 검증하고
+   Base URL(US 리전 고정) + API 키 + (권장) OWN-USER-ID를 받아 GET /v2/projects로 검증하고
    성공 시 세션에 고정한다. 키는 sessionStorage(탭 한정)가 기본, 영구 저장은 경고 동반 옵트인. */
 import { el, clear } from '../lib/dom';
 import { specs } from '../core/endpoints';
 import { buildUrl } from '../core/request-spec';
 import { encodeOwnUserId, isAscii } from '../core/encoding';
-import { REGION_BASE_URLS, session, isConnected, type Region } from '../state/session';
+import { REGION_BASE_URLS, session, isConnected } from '../state/session';
 import { makeClient } from '../state/client';
-import { badge, banner, button, checkbox, field, page, segmented, spinner, textInput } from '../ui/widgets';
+import { badge, banner, button, checkbox, field, page, spinner, textInput } from '../ui/widgets';
 import { errorPanel } from '../ui/error-panel';
 import { rawView } from '../ui/raw-view';
 import { codePanel } from '../ui/code-panel';
@@ -15,23 +15,19 @@ import { codePanel } from '../ui/code-panel';
 export function render(container: HTMLElement): void {
   const saved = session.get();
 
-  // ---- 폼 상태 ----
-  let region: Region = saved.region;
-  let customUrl = saved.region === 'custom' ? saved.baseUrl : '';
+  // ---- 폼 상태 ---- (리전은 US 고정 — 수정 불가)
+  const baseUrl = REGION_BASE_URLS.us;
   let apiKey = saved.apiKey;
   let ownUserId = saved.ownUserId;
   let userEmail = saved.userEmail;
   let persist = saved.persist;
   let checking = false;
 
-  const effectiveBaseUrl = (): string =>
-    region === 'custom' ? customUrl.trim().replace(/\/+$/, '') : REGION_BASE_URLS[region];
-
   // ---- 코드 생성 패널 (현재 폼 상태 기준) ----
   const code = codePanel(
     () => ({ spec: specs.projects(), wrapper: { kind: 'none' } }),
     () => ({
-      baseUrl: effectiveBaseUrl() || 'https://backend.alli.ai',
+      baseUrl,
       ownUserId: ownUserId.trim() || undefined,
       userEmail: userEmail.trim() || undefined,
     }),
@@ -39,20 +35,6 @@ export function render(container: HTMLElement): void {
   const refreshCode = () => code.refresh();
 
   // ---- 컨트롤 ----
-  const customUrlInput = textInput({
-    mono: true,
-    placeholder: 'https://alli.example.com (온프레미스)',
-    value: customUrl,
-    onInput: (v) => {
-      customUrl = v;
-      refreshCode();
-    },
-  });
-  const customUrlField = field('커스텀 Base URL', customUrlInput, {
-    hint: '온프레미스 서버 주소를 직접 입력합니다',
-  });
-  customUrlField.style.display = region === 'custom' ? '' : 'none';
-
   const keyInput = textInput({
     type: 'password',
     mono: true,
@@ -97,16 +79,12 @@ export function render(container: HTMLElement): void {
 
   async function check(): Promise<void> {
     if (checking) return;
-    const base = effectiveBaseUrl();
+    const base = baseUrl;
     clear(statusSlot);
     clear(rawSlot);
 
     if (!apiKey.trim()) {
       statusSlot.appendChild(banner('API 키를 입력하세요 — 대시보드 Settings > General의 REST API 키 (JS 챗 위젯용 sdkKey 아님)', 'warn'));
-      return;
-    }
-    if (region === 'custom' && !/^https?:\/\//.test(base)) {
-      statusSlot.appendChild(banner('커스텀 Base URL은 http(s)://로 시작해야 합니다', 'warn'));
       return;
     }
 
@@ -126,7 +104,7 @@ export function render(container: HTMLElement): void {
       const res = await client.execute(spec);
       // 200 = 검증 성공 (§5.1 — 스키마 미상세라 상태 코드만 신뢰)
       session.set({
-        region,
+        region: 'us',
         baseUrl: base,
         apiKey: apiKey.trim(),
         ownUserId: ownUserId.trim(),
@@ -149,7 +127,7 @@ export function render(container: HTMLElement): void {
       );
     } catch (e) {
       clear(statusSlot);
-      statusSlot.appendChild(errorPanel(e, 'connect'));
+      statusSlot.appendChild(errorPanel(e, 'connect', { rawOpen: true }));
     } finally {
       checking = false;
       checkBtn.disabled = false;
@@ -168,24 +146,9 @@ export function render(container: HTMLElement): void {
           'div',
           { class: 'stack' },
           isConnected() ? el('div', {}, badge('현재 연결됨 — 다시 검증하면 설정이 교체됩니다', 'on')) : null,
-          field(
-            '리전',
-            segmented(
-              [
-                { value: 'us', label: 'US' },
-                { value: 'ja', label: 'JA' },
-                { value: 'custom', label: '커스텀' },
-              ],
-              region,
-              (v) => {
-                region = v as Region;
-                customUrlField.style.display = region === 'custom' ? '' : 'none';
-                refreshCode();
-              },
-            ),
-            { hint: 'US: backend.alli.ai / JA: backend-ja.alli.ai / 커스텀: 온프레미스' },
-          ),
-          customUrlField,
+          field('리전', el('div', {}, badge('US — backend.alli.ai', 'on')), {
+            hint: 'US 리전으로 고정되어 있습니다',
+          }),
           field('API 키', el('div', { class: 'row' }, keyInput, revealBtn), {
             hint: '대시보드 Settings > General의 REST API 키 — JS 챗 위젯용 sdkKey와 다른 키입니다',
           }),

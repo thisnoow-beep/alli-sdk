@@ -83,7 +83,7 @@ function wireExample(parts: MultipartPart[]): string {
 /** raw 뷰 요청 본문 표시용 — multipart 파트 요약 */
 function partsSummary(parts: MultipartPart[]): string {
   return [
-    'multipart/form-data — boundary는 전송 시 자동 생성 (§7-3)',
+    'multipart/form-data — boundary는 전송 시 자동 생성',
     ...parts.map((p) =>
       p.kind === 'text'
         ? `${p.name} (text): ${p.value ?? ''}`

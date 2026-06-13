@@ -1,7 +1,8 @@
 /* 코드 생성 계약 — SSOT §7.
    산출물은 정확히 4개(3세트): curl ① / JavaScript(브라우저 fetch ② + Node.js ③) / Python requests ④.
-   API 키는 컨텍스트에 절대 포함되지 않는다 — 생성 코드는 환경변수 ALLI_API_KEY를 읽고,
-   브라우저 변형만 placeholder + "운영 브라우저 코드에 키 금지" 경고 주석을 쓴다. */
+   API 키는 컨텍스트에 절대 포함되지 않는다 — 모든 변형이 환경변수 ALLI_API_KEY 설정 완료를
+   전제로 생성된다(초기 설정 화면에서 사전 안내). 브라우저 변형은 키 리터럴/placeholder 없이
+   백엔드가 환경변수를 읽어 주입한 값(globalThis.ALLI_API_KEY)을 참조한다. */
 
 import type { RequestSpec } from '../core/request-spec';
 

@@ -4,6 +4,7 @@
 import { el, clear } from '../lib/dom';
 import { generateArtifacts } from '../codegen';
 import type { CodegenContext, CodegenPlan, GeneratedArtifact } from '../codegen/plan';
+import { codeBlock } from './code-block';
 import { copyButton, segmented, tabsBar } from './widgets';
 
 export interface CodePanelHandle {
@@ -85,7 +86,7 @@ export function codePanel(
         copyButton(() => art.code, '코드 복사'),
       ),
     );
-    body.appendChild(el('pre', { class: 'code-block' }, art.code));
+    body.appendChild(codeBlock(art.code, art.language));
   }
 
   function refresh(): void {

@@ -9,7 +9,7 @@ import type { AlliClient } from '../core/client';
 import { GA_MODEL_SUGGESTIONS } from '../core/types';
 import type { Clue, GaResponse, GenerativeAnswerBody, HashtagsResponse, SearchFrom } from '../core/types';
 import { tryExtractDraftJs } from '../core/draftjs';
-import { session } from '../state/session';
+import { session, isConnected } from '../state/session';
 import { getClient } from '../state/client';
 import {
   badge,
@@ -25,6 +25,7 @@ import {
 } from '../ui/widgets';
 import { errorPanel } from '../ui/error-panel';
 import { rawView, type RawRequestInfo } from '../ui/raw-view';
+import { codeBlock } from '../ui/code-block';
 import { codePanel } from '../ui/code-panel';
 import { hashtagPicker, type HashtagPickerHandle } from '../ui/hashtag-picker';
 import { streamView } from '../ui/stream-view';
@@ -236,8 +237,8 @@ export function render(container: HTMLElement): void {
     return el(
       'div',
       { class: 'stack', style: 'gap: 8px;' },
-      el('div', {}, badge('answer가 문자열이 아님 — DraftJS 객체 가능성 (§3.4)', 'warn')),
-      el('pre', { class: 'code-block code-block--wrap' }, JSON.stringify(answer, null, 2)),
+      el('div', {}, badge('answer가 문자열이 아님 — DraftJS 객체 가능성', 'warn')),
+      codeBlock(JSON.stringify(answer, null, 2), 'json', { wrap: true }),
     );
   }
 
@@ -342,6 +343,11 @@ export function render(container: HTMLElement): void {
     if (running) return;
     clear(statusSlot);
     clear(rawSlot);
+
+    if (!isConnected()) {
+      statusSlot.appendChild(banner('연결되지 않았습니다 — 연결 화면에서 API 키를 먼저 검증하세요', 'warn'));
+      return;
+    }
 
     const q = query.trim();
     if (q === '') {
@@ -459,7 +465,7 @@ export function render(container: HTMLElement): void {
                 ),
           ),
           field('answerFormat', el('div', {}, badge('MARKDOWN (고정)', 'on')), {
-            hint: 'DraftJS 기본값 함정 회피 (§3.4) — SDK가 항상 MARKDOWN을 지정합니다',
+            hint: '미지정 시 answer가 다루기 어려운 DraftJS 객체로 반환되므로, 항상 MARKDOWN을 지정합니다',
           }),
           el(
             'div',

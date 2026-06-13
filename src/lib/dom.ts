@@ -1,5 +1,6 @@
 /* 최소 DOM 헬퍼 — 문자열 자식은 항상 textNode로 추가 (XSS 방어 기본자세).
-   innerHTML은 markdown-view(새니타이즈 후)에서만 사용한다. */
+   innerHTML은 ui/markdown-view와 ui/code-block(둘 다 DOMPurify 새니타이즈 후)에서만 사용한다.
+   새 innerHTML 경로를 추가하지 말 것 — 코드 하이라이팅은 codeBlock()을 경유한다. */
 
 export type Child = Node | string | number | null | undefined | false | Child[];
 

@@ -106,6 +106,19 @@ SDK·플레이그라운드 모두 base URL을 설정값으로 받는다. (NLU AP
 
 ## 4. 시나리오 상세
 
+### Flow 0. 초기 설정 (정적 가이드)
+
+**목적**: 코드 생성의 전제 조건을 사전에 한 번 안내 — API 호출이 없는 가이드 화면 (`#/setup`, 기본 진입 화면).
+
+플레이그라운드의 동작(연결 화면의 키 입력·세션 보관)과 코드 가이드는 완전히 별개다. 생성 코드는 모두 **키가 백엔드 환경변수 `ALLI_API_KEY`로 주입돼 있다**는 전제로 작성되며(§7-1), 이 화면이 그 전제를 안내한다:
+
+1. REST API 키 발급 위치 — Settings > General (sdkKey와 혼동 주의)
+2. 백엔드 환경변수 `ALLI_API_KEY` 설정 — macOS/Linux(export), Windows(PowerShell/setx), .env(+커밋 금지 경고), 컨테이너/CI(시크릿)
+3. 브라우저 사용 원칙 — 소스/번들에 키 금지, 백엔드가 환경변수 값을 주입(`globalThis.ALLI_API_KEY`) 또는 운영은 프록시 경유
+4. 설정 확인 — env 출력 + `GET /v2/projects` curl 한 줄
+
+이후 모든 화면의 생성 코드는 이 설정이 완료됐다는 전제로 동작하고, 환경변수 설정법을 코드 안에서 다시 가르치지 않는다.
+
 ### Flow 1. API Key 검증
 
 **목적**: 접속 설정(Base URL + 키 + 호출자 식별자)을 검증하고 세션에 고정.
@@ -442,7 +455,7 @@ curl -H 'API-KEY: YOUR_API_KEY' 'https://backend.alli.ai/webapi/v2/conversations
 
 공통 규칙:
 
-1. **Base URL·키 변수화** — `BASE_URL`, `API_KEY`(placeholder `YOUR_API_KEY`)를 상수로 분리. 실제 키 값은 절대 코드에 삽입하지 않음
+1. **Base URL·키 변수화** — 실제 키 값은 절대 코드에 삽입하지 않고, 키를 코드에 적게 하는 placeholder(`YOUR_API_KEY` 류)도 금지. 모든 변형은 **환경변수 `ALLI_API_KEY` 설정 완료를 전제**로 생성한다(전제는 Flow 0 초기 설정 화면에서 사전 안내): curl/bash는 `$ALLI_API_KEY`, Node는 `process.env.ALLI_API_KEY`(미설정 throw), Python은 `os.environ["ALLI_API_KEY"]`(미설정 KeyError), 브라우저는 백엔드가 환경변수를 읽어 주입한 값(`globalThis.ALLI_API_KEY`, 미주입 throw)을 참조하고 "소스에 키 리터럴 금지 + 운영은 프록시 경유 권장" 주석을 동반. JS/Python은 `BASE_URL` 상수 분리, curl은 복사한 명령 단독 실행이 가능하도록 Base URL을 명령어에 인라인(kb-replace bash 스크립트는 예외적으로 `BASE_URL` 변수 유지)
 2. **헤더 주입** — `API-KEY` 필수, Flow 1에서 OWN-USER-ID가 설정돼 있으면 함께 포함 (비ASCII면 `base64:` 변환 코드 포함)
 3. **Content-Type** — JSON 요청은 `application/json` 명시, multipart는 명시하지 않음 (boundary 자동 설정: FormData / requests files= / curl -F)
 4. **에러 처리 스켈레톤** — HTTP status 분기 + 본문의 `code`(7001~7004)/`error`/`errors` 키 해석 주석 포함

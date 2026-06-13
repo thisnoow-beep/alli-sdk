@@ -18,7 +18,8 @@
 }
 .grid-2col {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, …): 코드 패널의 긴 줄(min-content)이 컬럼을 밀어내 좌측 폼이 줄어드는 것 방지 */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-xl);
   align-items: start;
 }
@@ -213,7 +214,8 @@ select.input option {
 .field-hint {
   font-family: var(--font-body);
   font-size: 13px;
-  color: var(--color-muted-soft);
+  font-weight: 500;
+  color: var(--color-body);
 }
 .field-error {
   font-family: var(--font-mono);

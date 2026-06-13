@@ -23,16 +23,15 @@ import {
   trimBase,
 } from './shared';
 
-const STREAM_COMMENT = '# 응답은 JSON 조각 스트림 (SSE 아님 — SSOT §3.5): 청크를 누적하며 JSON 단위로 파싱해 소비';
+const STREAM_COMMENT = '# 응답은 SSE가 아니라 JSON 조각 스트림: 청크를 누적하며 JSON 단위로 파싱해 소비';
 const BASE64_COMMENT = "# 비ASCII OWN-USER-ID는 base64: 인코딩 (echo -n '값' | base64)";
 
-/** 상단 공통 주석 + BASE_URL 상수 (§7-1, §7-4) */
+/** 상단 공통 주석 (§7-1, §7-4) — Base URL은 명령어에 인라인 (복사한 명령 단독 실행 가능) */
 function prelude(ctx: CodegenContext, extra: string[] = []): string[] {
-  const L = ['# 먼저: export ALLI_API_KEY=발급받은키'];
+  const L = ['# 전제: 환경변수 ALLI_API_KEY 설정 완료 — 미설정 시 초기 설정 가이드 참고'];
   L.push(...ERROR_TABLE_LINES.map((l) => '# ' + l));
   if (ctx.ownUserId || ctx.userEmail) L.push(BASE64_COMMENT);
   L.push(...extra);
-  L.push(`BASE_URL=${shQuote(trimBase(ctx.baseUrl))}`);
   return L;
 }
 
@@ -49,11 +48,11 @@ function joinCmd(segs: string[]): string {
   return segs.join(' \\\n  ');
 }
 
-function curlHead(spec: RequestSpec): string {
+function curlHead(spec: RequestSpec, ctx: CodegenContext): string {
   let s = 'curl';
   if (spec.stream) s += ' --no-buffer';
   if (spec.method !== 'GET') s += ` -X ${spec.method}`;
-  s += ` "$BASE_URL${shDouble(pathWithQuery(spec))}"`;
+  s += ` "${shDouble(trimBase(ctx.baseUrl) + pathWithQuery(spec))}"`;
   return s;
 }
 
@@ -72,11 +71,11 @@ function curlNone(spec: RequestSpec, ctx: CodegenContext): string {
   const out = prelude(ctx);
   out.push('');
   if (spec.stream) out.push(STREAM_COMMENT);
-  const segs = [curlHead(spec), ...headerArgs(ctx, spec.body.kind === 'json')];
+  const segs = [curlHead(spec, ctx), ...headerArgs(ctx, spec.body.kind === 'json')];
   if (spec.body.kind === 'json') {
     segs.push('--data-raw ' + shQuote(JSON.stringify(spec.body.value, null, 2)));
   } else if (spec.body.kind === 'multipart') {
-    out.push('# multipart — Content-Type 직접 지정 금지 (-F가 boundary 자동 설정, §7-3)');
+    out.push('# multipart — Content-Type 직접 지정 금지 (-F가 boundary 자동 설정)');
     segs.push(...fParts(spec.body.parts));
   }
   out.push(joinCmd(segs));
@@ -92,16 +91,16 @@ function curlGaThreadLoop(spec: RequestSpec, ctx: CodegenContext): string {
   const first = { query: firstQuery, ...base };
   const second = { query: GA_FOLLOW_UP, ...base, threadId: '__THREAD_ID__' };
 
-  const out = prelude(ctx, ['# ⚠️ OWN-USER-ID 헤더 없으면 threadId(멀티턴)가 비활성화됩니다 (SSOT §3.2)']);
+  const out = prelude(ctx, ['# ⚠️ OWN-USER-ID 헤더 없으면 threadId(멀티턴)가 비활성화됩니다']);
   out.push('');
   if (spec.stream) out.push(STREAM_COMMENT);
   out.push('# 1차 호출 — threadId 없이 질문, 응답의 threadId를 확인');
-  out.push(joinCmd([curlHead(spec), ...headerArgs(ctx, true), '--data-raw ' + shQuote(JSON.stringify(first, null, 2))]));
+  out.push(joinCmd([curlHead(spec, ctx), ...headerArgs(ctx, true), '--data-raw ' + shQuote(JSON.stringify(first, null, 2))]));
   out.push('');
   out.push('# 2차 호출 — 1차 응답의 threadId를 재사용해 맥락 유지 (멀티턴)');
   out.push("THREAD_ID='1차_응답의_threadId'");
   const secondRaw = shQuote(JSON.stringify(second, null, 2)).replace('"__THREAD_ID__"', '"\'"$THREAD_ID"\'"');
-  out.push(joinCmd([curlHead(spec), ...headerArgs(ctx, true), '--data-raw ' + secondRaw]));
+  out.push(joinCmd([curlHead(spec, ctx), ...headerArgs(ctx, true), '--data-raw ' + secondRaw]));
   return out.join('\n') + '\n';
 }
 
@@ -113,14 +112,14 @@ function curlConversationLoop(spec: RequestSpec, ctx: CodegenContext): string {
   out.push('');
   out.push(STREAM_COMMENT);
   out.push('# 1차 호출 — conversationId 없이 새 대화 시작.');
-  out.push('# 스트림에서 conversationId 확인 (위치는 스키마 미문서화 — 실 응답으로 검증, SSOT §9-2)');
-  out.push(joinCmd([curlHead(spec), ...headerArgs(ctx, false), ...fParts(parts)]));
+  out.push('# 스트림에서 conversationId 확인 — 응답 위치가 환경마다 다를 수 있으니 실제 응답 본문에서 확인');
+  out.push(joinCmd([curlHead(spec, ctx), ...headerArgs(ctx, false), ...fParts(parts)]));
   out.push('');
   out.push('# 2차 호출 — 확보한 conversationId로 후속 메시지 전송 (반복)');
   out.push("CONV_ID='1차_스트림에서_확보한_conversationId'");
   out.push(
     joinCmd([
-      curlHead(spec),
+      curlHead(spec, ctx),
       ...headerArgs(ctx, false),
       '-F "conversationId=$CONV_ID"',
       '-F ' + shQuote(`message=${CONV_FOLLOW_UP}`),
@@ -139,8 +138,8 @@ function curlKbReplace(spec: RequestSpec, ctx: CodegenContext, w: KbReplaceWrapp
   const L: string[] = [];
   L.push('#!/usr/bin/env bash');
   L.push('# bash / Git Bash / WSL용');
-  L.push('# 먼저: export ALLI_API_KEY=발급받은키');
-  L.push('# 문서 교체 루틴 — 순서: 업로드 → 완료 확인 → 삭제 (역순 금지 — 문서 소실/검색 공백, SSOT Flow 5)');
+  L.push('# 전제: 환경변수 ALLI_API_KEY 설정 완료 — 미설정 시 초기 설정 가이드 참고');
+  L.push('# 문서 교체 루틴 — 순서: 업로드 → 완료 확인 → 삭제 (먼저 지우면 문서 소실/검색 공백이 생기므로 역순 금지)');
   L.push(...ERROR_TABLE_LINES.map((l) => '# ' + l));
   if (ctx.ownUserId || ctx.userEmail) L.push(BASE64_COMMENT);
   L.push('set -euo pipefail');
@@ -153,7 +152,7 @@ function curlKbReplace(spec: RequestSpec, ctx: CodegenContext, w: KbReplaceWrapp
   L.push(`AUTH=(${headerArgs(ctx, false).join(' ')})`);
   L.push('');
   L.push('# 1) 새 파일 업로드 (구 노드의 hashtags 승계, 같은 폴더 지정 권장)');
-  L.push('# multipart — Content-Type 직접 지정 금지 (-F가 boundary 자동 설정, §7-3)');
+  L.push('# multipart — Content-Type 직접 지정 금지 (-F가 boundary 자동 설정)');
   L.push(
     joinCmd([
       'UPLOAD_RES=$(curl -sS -X POST "$BASE_URL' + shDouble(pathWithQuery(spec)) + '" "${AUTH[@]}"',
@@ -172,7 +171,7 @@ function curlKbReplace(spec: RequestSpec, ctx: CodegenContext, w: KbReplaceWrapp
   L.push('fi');
   L.push('echo "업로드 완료 — 새 노드: $NEW_NODE_ID"');
   L.push('');
-  L.push('# 2) ingestion_status 폴링 (SSOT §5.11) — 성공: completed/post_completed, 실패: parsing_fail/post_parsing_fail');
+  L.push('# 2) ingestion_status 폴링 — 성공: completed/post_completed, 실패: parsing_fail/post_parsing_fail');
   L.push('#    initializing/parsing/retrying/post_retrying 등 진행 상태는 계속 대기 (백오프)');
   L.push('ELAPSED=0');
   L.push('INTERVAL=$POLL_INTERVAL');

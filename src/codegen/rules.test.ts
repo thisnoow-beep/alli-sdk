@@ -1,7 +1,7 @@
 /* §7 코드 생성 규약 적대적 테스트 — 스펙(SSOT §7·§3.2~3.5·§5)에서 도출한 체크리스트 기반.
    체크리스트 (구현 확인 전에 작성):
      1. 산출물 정확히 4개 [curl, browser, node, python] + setLabel/title 계약 (plan.ts, §7 서두)
-     2. 키 보안 — 실 키 미삽입, 변형별 환경변수/placeholder + 브라우저 경고 (§7-1)
+     2. 키 보안 — 실 키 미삽입, 전 변형 환경변수 ALLI_API_KEY 전제(브라우저는 백엔드 주입 값 참조) (§7-1)
      3. OWN-USER-ID 주입 + 비ASCII base64: 변환 (§7-2, §3.2)
      4. Content-Type — JSON만 application/json, multipart는 미지정(-F/FormData/files=) (§7-3)
      5. multipart 패리티 — parts와 생성 코드 구조 일치 (§7 서두, request-spec 패리티 원칙)
@@ -142,28 +142,41 @@ describe('산출물 계약 — 정확히 4개, 순서/라벨/타이틀', () => {
     expect(arts[2].title).toContain('Node.js');
     expect(arts[2].title).toContain('20');
     for (const a of arts) {
-      expect(a.code, `${a.variant}: BASE_URL 상수 분리 (§7-1)`).toContain('BASE_URL');
+      // curl은 복사한 명령 단독 실행이 가능하도록 Base URL을 명령어에 인라인 (§7-1)
+      if (a.variant !== 'curl') {
+        expect(a.code, `${a.variant}: BASE_URL 상수 분리 (§7-1)`).toContain('BASE_URL');
+      }
       expect(a.code, `${a.variant}: baseUrl 값 주입`).toContain('https://backend.alli.ai');
+    }
+  });
+});
+
+describe('생성 코드에 내부 문서 참조 금지', () => {
+  it.each(KEYS)('plan %s — SSOT/절 번호(§)가 생성 코드에 노출되지 않는다', (key) => {
+    for (const a of ARTS[key]) {
+      expect(a.code, `${a.variant}: 생성 코드는 SSOT 없이 그 자체로 읽혀야 한다`).not.toMatch(/SSOT|§/);
     }
   });
 });
 
 /* ---------- 2. 키 보안 (§7-1) ---------- */
 
-describe('키 보안 (§7-1) — 실 키 미삽입, 변형별 주입 방식', () => {
-  it.each(KEYS)('plan %s — env var/placeholder만 사용, 브라우저는 경고 주석', (key) => {
+describe('키 보안 (§7-1) — 실 키 미삽입, 전 변형 환경변수 ALLI_API_KEY 전제', () => {
+  it.each(KEYS)('plan %s — env var 전제, 브라우저는 백엔드 주입 값 참조 + 경고 주석', (key) => {
     const { curl, browser, node, python } = pick(key);
     for (const a of ARTS[key]) {
       // 실 키처럼 보이는 긴 영숫자 토큰이 따옴표로 박혀 있으면 안 된다
       expect(a.code, `${a.variant}: 실 키 형태 토큰 발견`).not.toMatch(/['"][A-Za-z0-9_-]{30,}['"]/);
+      // 키를 코드에 직접 적게 하는 placeholder 금지 — 환경변수 설정은 초기 설정 화면에서 사전 안내
+      expect(a.code, `${a.variant}: 키 placeholder 발견`).not.toContain('YOUR_API_KEY');
     }
     expect(curl.code).toContain('$ALLI_API_KEY');
     expect(node.code).toContain('process.env.ALLI_API_KEY');
     expect(python.code).toContain('os.environ["ALLI_API_KEY"]');
-    expect(browser.code).toContain('YOUR_API_KEY');
-    // 브라우저 변형 경고 — 키는 서버를 경유해야 한다는 취지의 주석 (§7-1, plan.ts 머리말)
-    expect(browser.code, 'browser: 키 노출 경고 주석에 "서버" 언급').toContain('서버');
-    expect(browser.code, 'browser: env var 접근 코드가 있으면 안 됨').not.toContain('ALLI_API_KEY');
+    // 브라우저 변형 — 백엔드가 환경변수를 읽어 주입한 값 참조 + 미주입 fail-fast (§7-1, plan.ts 머리말)
+    expect(browser.code, 'browser: 백엔드 주입 값 참조').toContain('globalThis.ALLI_API_KEY');
+    expect(browser.code, 'browser: 미주입 fail-fast').toContain('if (!API_KEY) throw');
+    expect(browser.code, 'browser: 키 노출 경고 주석에 "백엔드" 언급').toContain('백엔드');
   });
 });
 

@@ -41,7 +41,7 @@ function sec(ms: number): number {
 /** raw 뷰 요청 본문 표시용 — multipart 파트 요약 (§7-3) */
 function partsSummary(parts: MultipartPart[]): string {
   return [
-    'multipart/form-data — boundary는 전송 시 자동 생성 (§7-3)',
+    'multipart/form-data — boundary는 전송 시 자동 생성',
     ...parts.map((p) =>
       p.kind === 'text'
         ? `${p.name} (text): ${p.value ?? ''}`
@@ -408,7 +408,7 @@ export function render(container: HTMLElement): () => void {
       renderRaw();
       const newId = extractKbNodes(res.data).nodes[0]?.id;
       if (newId === undefined) {
-        dispatch({ type: 'UPLOAD_FAIL', error: '업로드 응답에서 새 노드 id를 찾지 못했습니다 (§5.9 응답 래퍼 미문서)' });
+        dispatch({ type: 'UPLOAD_FAIL', error: '업로드 응답에서 새 노드 id를 찾지 못했습니다 — 응답 형식이 예상과 다릅니다. Raw 뷰에서 응답 본문을 확인하세요' });
         return;
       }
       dispatch({ type: 'UPLOAD_OK', newNodeId: newId });
@@ -858,7 +858,7 @@ export function render(container: HTMLElement): () => void {
   container.appendChild(
     page(
       '문서 교체',
-      '문서 업로드 API에는 overwrite가 없습니다(§9-5) — "업로드 → 완료 확인 → 삭제" 조합으로 개정 문서를 안전하게 교체합니다.',
+      '문서 업로드 API에는 덮어쓰기(overwrite) 기능이 없습니다 — "업로드 → 완료 확인 → 삭제" 조합으로 개정 문서를 안전하게 교체합니다.',
       el(
         'div',
         { class: 'stack', style: 'gap: 16px;' },
@@ -878,7 +878,7 @@ export function render(container: HTMLElement): () => void {
           field('fileName', fileNameInput, {
             hint: "파일 선택 시 자동 채움 — 수정 가능. 데모: 'fail'을 포함하면 인제스천 실패(parsing_fail) → 롤백 경로를 볼 수 있습니다",
           }),
-          field('hashtags', hashtagsInput, { hint: '쉼표 구분 — 구 노드 선택 시 자동 승계됩니다 (§4-5-2)' }),
+          field('hashtags', hashtagsInput, { hint: '쉼표 구분 — 구 노드 선택 시 자동 승계됩니다' }),
           field('targetFolderId (옵션)', targetFolderInput, { hint: '구 문서와 같은 폴더를 지정하면 위치가 유지됩니다' }),
           checkbox('useLayout — 레이아웃 분석', {
             checked: useLayout,

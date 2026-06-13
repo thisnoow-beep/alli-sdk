@@ -26,13 +26,15 @@ describe('generateArtifacts — 순서/제목 계약', () => {
   });
 });
 
-describe('API 키 미삽입 (§7-1)', () => {
-  it('모든 변형이 환경변수/placeholder만 사용한다', () => {
+describe('API 키 미삽입 (§7-1) — 전 변형 환경변수 ALLI_API_KEY 전제 (초기 설정에서 사전 안내)', () => {
+  it('모든 변형이 환경변수 전제로 동작하고 키 리터럴/placeholder를 쓰지 않는다', () => {
     const [curl, browser, node, python] = generateArtifacts(gaPlan(), ctx);
     expect(curl.code).toContain('"API-KEY: $ALLI_API_KEY"');
-    expect(curl.code).toContain('# 먼저: export ALLI_API_KEY=발급받은키');
-    expect(browser.code).toContain('const API_KEY = "YOUR_API_KEY";');
-    expect(browser.code).toContain('운영 브라우저 코드에 API 키를 넣지 마세요');
+    expect(curl.code).toContain('# 전제: 환경변수 ALLI_API_KEY 설정 완료');
+    expect(browser.code).not.toContain('YOUR_API_KEY');
+    expect(browser.code).toContain('const API_KEY = globalThis.ALLI_API_KEY;');
+    expect(browser.code).toContain('키 리터럴을 넣지 마세요');
+    expect(browser.code).toContain('if (!API_KEY) throw');
     expect(node.code).toContain('const API_KEY = process.env.ALLI_API_KEY;');
     expect(node.code).toContain('if (!API_KEY) throw');
     expect(python.code).toContain('API_KEY = os.environ["ALLI_API_KEY"]');
@@ -124,11 +126,12 @@ describe('multipart 렌더링 (§7-7)', () => {
   });
 });
 
-describe('GET/DELETE — BASE_URL 상수 + 경로 결합 (§7-8)', () => {
+describe('GET/DELETE — Base URL + 경로 결합 (§7-8)', () => {
   it('쿼리스트링이 코드에서 그대로 읽힌다', () => {
     const p = plan(specs.listApps({ published: true, pageSize: 50 }));
     const [curl, , node, python] = generateArtifacts(p, ctx);
-    expect(curl.code).toContain('"$BASE_URL/webapi/v2/apps?published=true&pageSize=50"');
+    // curl은 Base URL을 명령어에 인라인 (§7-1)
+    expect(curl.code).toContain('"https://backend.alli.ai/webapi/v2/apps?published=true&pageSize=50"');
     expect(node.code).toContain('`${BASE_URL}/webapi/v2/apps?published=true&pageSize=50`');
     expect(python.code).toContain('f"{BASE_URL}/webapi/v2/apps?published=true&pageSize=50"');
   });
