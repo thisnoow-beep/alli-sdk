@@ -1,0 +1,19 @@
+/* D2Coding @font-face — woff2 단일 포맷만 참조.
+   d2coding 패키지의 d2coding-full.css는 woff2+woff+ttf를 모두 src로 나열해
+   번들에 woff/ttf(미사용 폴백, ~16MB)까지 방출된다. 모던 브라우저는 woff2만
+   내려받으므로, 여기서 woff2만 가리켜 dist 폰트 용량을 ~3MB로 줄인다.
+   풀세트(-full)라 한글 글리프는 전부 포함. */
+@font-face {
+  font-family: 'D2Coding';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('d2coding/fonts/d2coding-full.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'D2Coding';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('d2coding/fonts/d2coding-bold-full.woff2') format('woff2');
+}

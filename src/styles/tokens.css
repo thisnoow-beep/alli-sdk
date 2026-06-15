@@ -1,37 +1,48 @@
 /* ============================================================
-   Design tokens — DESIGN.md (Bugatti-design-analysis) 1:1 전사
-   + 한글 폴백 폰트 스택 (3서체에는 한글 글리프가 없음)
+   Design tokens — DESIGN.md (Slacc-design-analysis) 라이트 테마
+   폰트는 DESIGN.md 제안(Inter) 대신 D2Coding(모노스페이스) 단일 적용.
+   D2Coding은 한글 글리프를 포함 → Noto KR 폴백 불필요.
+
+   리팩토링 전략: 토큰명은 보존하고 값만 교체(revalue-in-place).
+   일부 이름(--color-on-dark, --color-canvas 등)은 라이트 테마에선
+   의미상 어긋나지만(예: on-dark=어버진 액센트), diff 최소화를 위해 유지.
    ============================================================ */
 :root {
-  /* ---- colors ---- */
-  --color-primary: #ffffff;
-  --color-ink: #ffffff;
-  --color-body: #cccccc;
-  --color-body-strong: #e6e6e6;
-  --color-muted: #999999;
-  --color-muted-soft: #666666;
-  --color-hairline: #262626;
-  --color-hairline-strong: #3a3a3a;
-  --color-canvas: #000000;
-  --color-surface-soft: #0d0d0d;
-  --color-surface-card: #141414;
-  --color-surface-elevated: #1f1f1f;
-  --color-on-primary: #000000;
-  --color-on-dark: #ffffff;
+  /* ---- colors (Slacc light) ---- */
+  --color-primary: #4a154b; /* 어버진 브랜드 토큰 (직접 소비처 없음) */
+  --color-ink: #1d1d1d; /* 디스플레이/제목 */
+  --color-body: #1d1d1d; /* 본문 */
+  --color-body-strong: #000000; /* 강조 본문 / 코드 텍스트 */
+  --color-muted: #696969; /* 보조 텍스트 (ink-mute) */
+  --color-muted-soft: #969696; /* 3차 텍스트 */
+  --color-hairline: #e6e6e6; /* 1px 경계 */
+  --color-hairline-strong: #c9c9c9; /* 인풋/세그먼트 경계 */
+  --color-canvas: #ffffff; /* 페이지 배경 */
+  --color-surface-soft: #f7f4fb; /* 코드블록/소프트 표면 (옅은 라벤더) */
+  --color-surface-card: #ffffff; /* 카드/패널 (.panel에 경계 부여) */
+  --color-surface-elevated: #efe9f3; /* 인라인 코드 칩 배경 */
+  --color-on-primary: #ffffff; /* 채워진 CTA 위 텍스트 */
+  --color-on-dark: #4a154b; /* "활성/강조 전경"색 → 실질 어버진 액센트 */
   --color-on-photo: #ffffff;
-  --color-link: #c3d9f3;
-  --color-warning: #d4a017;
-  --color-success: #5fa657;
+  --color-link: #1264a3; /* 인라인 링크 */
+  --color-warning: #cc4117; /* 에러/파괴 액션 (Slacc error) */
+  --color-success: #007a5a; /* 성공 (Slacc success) */
 
-  /* ---- font stacks ----
-     DESIGN.md 대체 서체: Saira Condensed / EB Garamond / JetBrains Mono.
-     세 서체 모두 한글 미지원 → Noto Sans/Serif KR 폴백 필수. */
-  --font-display:
-    'Saira Condensed', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-body: 'EB Garamond', 'Noto Serif KR', Garamond, 'Times New Roman', serif;
-  --font-mono: 'JetBrains Mono', 'Noto Sans KR', ui-monospace, 'SF Mono', 'Cascadia Mono', monospace;
+  /* ---- Slacc 전용 신규 색 ---- */
+  --color-accent: #4a154b; /* 어버진 — 채워진 CTA / 활성 */
+  --color-accent-press: #611f69; /* pressed lift */
+  --color-on-accent: #ffffff;
+  --color-surface-cream: #f4ede4; /* 따뜻한 오프화이트 — 액센트 패널/뱃지 */
+  --color-surface-lavender: #f9f0ff; /* 라벤더 — 보조 표면/선택행/세컨더리 버튼 */
+  --color-link-hover: #3860be;
 
-  /* ---- spacing (base 4px) ---- */
+  /* ---- font stacks (전 티어 D2Coding) ----
+     이름 3개 유지 = 기존 var(--font-*) 참조 무변경. */
+  --font-display: 'D2Coding', ui-monospace, 'Courier New', monospace;
+  --font-body: 'D2Coding', ui-monospace, 'Courier New', monospace;
+  --font-mono: 'D2Coding', ui-monospace, 'Courier New', monospace;
+
+  /* ---- spacing (base 4px) — 기존 유지 ---- */
   --space-xxs: 4px;
   --space-xs: 8px;
   --space-sm: 12px;
@@ -41,7 +52,12 @@
   --space-xxl: 64px;
   --space-section: 120px;
 
-  /* ---- radius: 버튼만 pill, 나머지는 전부 0 ---- */
+  /* ---- radius: Slacc 스케일 ---- */
   --rounded-none: 0px;
-  --rounded-pill: 9999px;
+  --rounded-xs: 2px; /* 인라인 코드 칩 */
+  --rounded-sm: 4px; /* 인풋 */
+  --rounded-md: 8px; /* 코드블록 / 배너 / 세그먼트 */
+  --rounded-lg: 12px; /* 빈 상태 */
+  --rounded-xl: 16px; /* 패널 / 카드 / 모달 */
+  --rounded-pill: 9999px; /* 버튼 / 뱃지 / 칩 */
 }

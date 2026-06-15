@@ -1,11 +1,5 @@
 /* 부트스트랩 — 폰트/스타일 로드, 목 모드 와이어링, 셸 + 라우터 마운트 */
-import '@fontsource/saira-condensed/400.css';
-import '@fontsource/eb-garamond/400.css';
-import '@fontsource/eb-garamond/500.css';
-import '@fontsource/jetbrains-mono/400.css';
-import '@fontsource/noto-sans-kr/400.css';
-import '@fontsource/noto-serif-kr/400.css';
-import '@fontsource/noto-serif-kr/500.css';
+import './styles/fonts.css'; // @font-face: 'D2Coding' (regular 400 + bold 700, woff2 한글 풀세트)
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/components.css';

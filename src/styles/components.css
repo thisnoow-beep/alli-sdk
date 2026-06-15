@@ -1,5 +1,5 @@
-/* 공용 컴포넌트 — DESIGN.md components 규약
-   (투명 필 버튼, 밑줄 인풋, 헤어라인, 그림자/radius/액센트 색 금지) */
+/* 공용 컴포넌트 — DESIGN.md (Slacc) 규약
+   (채워진 어버진 pill 버튼, 박스 인풋, 둥근 카드, 라이트 표면) */
 
 /* ---- 레이아웃 ---- */
 .page {
@@ -46,7 +46,7 @@
   gap: var(--space-md);
 }
 
-/* ---- 상단 내비게이션 (56px 투명 바) ---- */
+/* ---- 상단 내비게이션 (56px 라이트 바) ---- */
 .topnav {
   height: 56px;
   display: flex;
@@ -55,7 +55,7 @@
   padding: 0 var(--space-lg);
   border-bottom: 1px solid var(--color-hairline);
   position: relative;
-  background: transparent;
+  background: var(--color-canvas);
 }
 .topnav-links {
   display: flex;
@@ -63,9 +63,8 @@
 }
 .topnav-links a {
   font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  font-size: 14px;
+  letter-spacing: 0;
   line-height: 1.4;
   color: var(--color-muted);
   text-decoration: none;
@@ -73,7 +72,8 @@
 }
 .topnav-links a.active,
 .topnav-links a:hover {
-  color: var(--color-on-dark);
+  color: var(--color-accent);
+  text-decoration: none;
 }
 .topnav-wordmark {
   position: absolute;
@@ -86,8 +86,8 @@
   align-items: center;
   gap: var(--space-sm);
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1.5px;
+  font-size: 12px;
+  letter-spacing: 0;
   color: var(--color-muted);
 }
 
@@ -97,73 +97,96 @@
   border-top: 1px solid var(--color-hairline);
   color: var(--color-muted-soft);
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
+  font-size: 12px;
+  letter-spacing: 0;
 }
 
-/* ---- 버튼: 투명 + 1px 흰 윤곽 + pill (브랜드 버튼) ---- */
+/* ---- 버튼: 채워진 어버진 pill (기본 CTA) ---- */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-xs);
-  background: transparent;
-  color: var(--color-on-dark);
-  border: 1px solid var(--color-on-dark);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  border: 1px solid transparent;
   border-radius: var(--rounded-pill);
-  padding: 14px 32px;
+  padding: 14px 28px;
   height: 44px;
   font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 400;
-  letter-spacing: 2.5px;
-  text-transform: uppercase;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
   line-height: 1;
   cursor: pointer;
   white-space: nowrap;
 }
+.btn:hover:not(:disabled),
 .btn:active:not(:disabled) {
-  background: var(--color-on-dark);
-  color: var(--color-on-primary);
+  background: var(--color-accent-press);
 }
 .btn:disabled {
-  border-color: var(--color-muted-soft);
+  background: var(--color-hairline);
   color: var(--color-muted-soft);
   cursor: not-allowed;
 }
 .btn--sm {
   height: 32px;
-  padding: 8px 16px;
-  font-size: 11px;
-  letter-spacing: 2px;
+  padding: 8px 18px;
+  font-size: 13px;
 }
+/* 세컨더리: 라벤더 pill */
+.btn--secondary {
+  background: var(--color-surface-lavender);
+  color: var(--color-ink);
+}
+.btn--secondary:hover:not(:disabled),
+.btn--secondary:active:not(:disabled) {
+  background: var(--color-surface-elevated);
+}
+/* 아웃라인: 흰 배경 + 어버진 윤곽 */
+.btn--outline {
+  background: var(--color-canvas);
+  color: var(--color-accent);
+  border: 2px solid var(--color-accent);
+}
+.btn--outline:hover:not(:disabled),
+.btn--outline:active:not(:disabled) {
+  background: var(--color-surface-lavender);
+}
+/* 콰이엇: 텍스트 전용 */
 .btn--quiet {
+  background: transparent;
   border-color: transparent;
   color: var(--color-muted);
   padding-left: var(--space-md);
   padding-right: var(--space-md);
 }
-.btn--quiet:hover:not(:disabled) {
-  color: var(--color-on-dark);
+.btn--quiet:hover:not(:disabled),
+.btn--quiet:active:not(:disabled) {
+  background: transparent;
+  color: var(--color-accent);
 }
+/* 워닝/파괴 */
 .btn--warn {
-  border-color: var(--color-warning);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-warning);
   color: var(--color-warning);
 }
+.btn--warn:hover:not(:disabled),
 .btn--warn:active:not(:disabled) {
   background: var(--color-warning);
-  color: var(--color-on-primary);
+  color: var(--color-on-accent);
 }
 
-/* ---- 인풋: 투명 + 하단 헤어라인만 ---- */
+/* ---- 인풋: 박스 + 1px 경계 + 살짝 둥근 ---- */
 .input {
   width: 100%;
-  background: transparent;
-  color: var(--color-on-dark);
-  border: none;
-  border-bottom: 1px solid var(--color-hairline-strong);
-  border-radius: var(--rounded-none);
-  padding: 12px 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  border: 1px solid var(--color-hairline-strong);
+  border-radius: var(--rounded-sm);
+  padding: 10px 12px;
   height: 44px;
   font-family: var(--font-body);
   font-size: 16px;
@@ -174,7 +197,8 @@
 }
 .input:focus {
   outline: none;
-  border-bottom-color: var(--color-on-dark);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
 }
 .input--mono {
   font-family: var(--font-mono);
@@ -191,11 +215,14 @@ select.input {
   cursor: pointer;
 }
 select.input option {
-  background: var(--color-surface-card);
-  color: var(--color-body-strong);
+  background: var(--color-canvas);
+  color: var(--color-ink);
 }
 .input[aria-invalid='true'] {
-  border-bottom-color: var(--color-warning);
+  border-color: var(--color-warning);
+}
+.input[aria-invalid='true']:focus {
+  box-shadow: 0 0 0 1px var(--color-warning);
 }
 
 /* ---- 필드 래퍼 ---- */
@@ -206,21 +233,21 @@ select.input option {
 }
 .field-label {
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.96px;
   text-transform: uppercase;
   color: var(--color-muted);
 }
 .field-hint {
   font-family: var(--font-body);
   font-size: 13px;
-  font-weight: 500;
-  color: var(--color-body);
+  color: var(--color-muted);
 }
 .field-error {
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
+  font-size: 12px;
+  letter-spacing: 0;
   color: var(--color-warning);
 }
 
@@ -235,7 +262,7 @@ select.input option {
   color: var(--color-body);
 }
 .check input {
-  accent-color: var(--color-on-dark);
+  accent-color: var(--color-accent);
   width: 14px;
   height: 14px;
 }
@@ -244,21 +271,22 @@ select.input option {
 .seg {
   display: inline-flex;
   border: 1px solid var(--color-hairline-strong);
+  border-radius: var(--rounded-md);
+  overflow: hidden;
 }
 .seg button {
   background: transparent;
   border: none;
   color: var(--color-muted);
   font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 0;
   padding: 10px 20px;
   cursor: pointer;
 }
 .seg button.active {
-  background: var(--color-on-dark);
-  color: var(--color-on-primary);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 .seg button:disabled {
   color: var(--color-muted-soft);
@@ -268,10 +296,13 @@ select.input option {
 /* ---- 패널/카드 ---- */
 .panel {
   background: var(--color-surface-card);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--rounded-xl);
   padding: var(--space-lg);
 }
 .panel--soft {
-  background: var(--color-surface-soft);
+  background: var(--color-surface-cream);
+  border-color: transparent;
 }
 .panel--line {
   background: transparent;
@@ -291,14 +322,14 @@ select.input option {
 }
 .table th {
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 2px;
+  font-size: 12px;
+  letter-spacing: 0.96px;
   text-transform: uppercase;
   color: var(--color-muted);
   text-align: left;
   padding: var(--space-sm) var(--space-md) var(--space-sm) 0;
   border-bottom: 1px solid var(--color-hairline-strong);
-  font-weight: 400;
+  font-weight: 700;
 }
 .table td {
   font-family: var(--font-body);
@@ -312,11 +343,11 @@ select.input option {
   cursor: pointer;
 }
 .table tr.selectable:hover td {
-  color: var(--color-on-dark);
+  background: var(--color-surface-lavender);
 }
 .table tr.selected td {
-  color: var(--color-on-dark);
-  background: var(--color-surface-soft);
+  color: var(--color-accent);
+  background: var(--color-surface-lavender);
 }
 
 /* ---- 탭 ---- */
@@ -328,19 +359,18 @@ select.input option {
 .tabs button {
   background: transparent;
   border: none;
-  border-bottom: 1px solid transparent;
+  border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   color: var(--color-muted);
   font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  font-size: 14px;
+  letter-spacing: 0;
   padding: var(--space-sm) 0;
   cursor: pointer;
 }
 .tabs button.active {
-  color: var(--color-on-dark);
-  border-bottom-color: var(--color-on-dark);
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
 }
 
 /* ---- 칩/뱃지 ---- */
@@ -349,11 +379,12 @@ select.input option {
   align-items: center;
   gap: 6px;
   border: 1px solid var(--color-hairline-strong);
-  padding: 4px 10px;
+  border-radius: var(--rounded-pill);
+  padding: 4px 12px;
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
-  color: var(--color-body);
+  font-size: 12px;
+  letter-spacing: 0;
+  color: var(--color-ink);
 }
 .chip button {
   background: none;
@@ -365,35 +396,42 @@ select.input option {
   padding: 0;
 }
 .chip button:hover {
-  color: var(--color-on-dark);
+  color: var(--color-accent);
 }
 .badge {
   display: inline-block;
-  border: 1px solid var(--color-hairline);
-  padding: 2px 8px;
+  background: var(--color-surface-cream);
+  border: 1px solid transparent;
+  border-radius: var(--rounded-pill);
+  padding: 3px 10px;
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1.5px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.96px;
   text-transform: uppercase;
-  color: var(--color-muted);
+  color: var(--color-ink);
   white-space: nowrap;
 }
 .badge--warn {
+  background: transparent;
   border-color: var(--color-warning);
   color: var(--color-warning);
 }
 .badge--success {
+  background: transparent;
   border-color: var(--color-success);
   color: var(--color-success);
 }
 .badge--on {
-  border-color: var(--color-on-dark);
-  color: var(--color-on-dark);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 /* ---- 배너 ---- */
 .banner {
   border: 1px solid var(--color-hairline-strong);
+  border-radius: var(--rounded-md);
   padding: var(--space-sm) var(--space-md);
   font-family: var(--font-body);
   font-size: 14px;
@@ -409,10 +447,11 @@ select.input option {
   color: var(--color-success);
 }
 
-/* ---- 코드 블록 ---- */
+/* ---- 코드 블록 (라이트 표면) ---- */
 .code-block {
   background: var(--color-surface-soft);
   border: 1px solid var(--color-hairline);
+  border-radius: var(--rounded-md);
   padding: var(--space-md);
   font-family: var(--font-mono);
   font-size: 13px;
@@ -431,7 +470,7 @@ select.input option {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.82);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -441,6 +480,8 @@ select.input option {
 .modal {
   background: var(--color-surface-card);
   border: 1px solid var(--color-hairline-strong);
+  border-radius: var(--rounded-xl);
+  box-shadow: rgba(0, 0, 0, 0.1) 0 0 32px 0;
   padding: var(--space-xl);
   max-width: 520px;
   width: 100%;
@@ -454,8 +495,8 @@ select.input option {
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 1px solid var(--color-hairline-strong);
-  border-top-color: var(--color-on-dark);
+  border: 1px solid var(--color-hairline);
+  border-top-color: var(--color-accent);
   border-radius: 50%;
   animation: spin 0.9s linear infinite;
   vertical-align: middle;
@@ -480,15 +521,15 @@ select.input option {
 }
 .stepper-step .step-no {
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
+  font-size: 12px;
+  letter-spacing: 0;
   color: var(--color-muted-soft);
   min-width: 24px;
   padding-top: 2px;
 }
 .stepper-step.active .step-no,
 .stepper-step.active .step-title {
-  color: var(--color-on-dark);
+  color: var(--color-accent);
 }
 .stepper-step.done .step-no {
   color: var(--color-success);
@@ -504,14 +545,14 @@ select.input option {
 }
 .chat-row .chat-who {
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 2px;
+  font-size: 12px;
+  letter-spacing: 0.96px;
   text-transform: uppercase;
   color: var(--color-muted);
   margin-bottom: var(--space-xs);
 }
 .chat-row.from-user .chat-who {
-  color: var(--color-body-strong);
+  color: var(--color-accent);
 }
 .chat-row .chat-body {
   font-family: var(--font-body);
@@ -533,8 +574,8 @@ select.input option {
 .md-view h3,
 .md-view h4 {
   font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: 1px;
+  font-weight: 700;
+  letter-spacing: 0;
   color: var(--color-ink);
   margin: var(--space-lg) 0 var(--space-sm);
 }
@@ -558,12 +599,14 @@ select.input option {
 }
 .md-view code {
   background: var(--color-surface-elevated);
+  border-radius: var(--rounded-xs);
   padding: 1px 5px;
   font-size: 13px;
 }
 .md-view pre {
   background: var(--color-surface-soft);
   border: 1px solid var(--color-hairline);
+  border-radius: var(--rounded-md);
   padding: var(--space-md);
   overflow: auto;
   margin: var(--space-sm) 0;
@@ -573,7 +616,7 @@ select.input option {
   padding: 0;
 }
 .md-view blockquote {
-  border-left: 1px solid var(--color-hairline-strong);
+  border-left: 2px solid var(--color-hairline-strong);
   padding-left: var(--space-md);
   color: var(--color-muted);
 }
@@ -596,4 +639,5 @@ select.input option {
   font-family: var(--font-body);
   font-size: 14px;
   border: 1px solid var(--color-hairline);
+  border-radius: var(--rounded-lg);
 }

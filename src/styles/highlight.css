@@ -1,47 +1,47 @@
 /* ============================================================
-   코드 하이라이팅 테마 — DESIGN.md(Bugatti 모노크롬)의 명시적 예외.
-   "코드 블록 내부 한정 일반 다크 테마" 결정(2026-06-13)에 따라
+   코드 하이라이팅 테마 — Slacc 라이트 테마의 라이트 코드 표면용.
    다색은 이 파일 안에서만 쓴다 — tokens.css로 올리지 말 것.
 
-   팔레트: GitHub Dark(Primer) 계열 — 기준 배경 #0d1117이
-   --color-surface-soft(#0d0d0d)와 사실상 동일해 대비가 검증된 조합.
-   배경·패딩·폰트는 기존 .code-block / .md-view pre 담당 — 여기선 토큰 글자색만.
+   팔레트: GitHub Light(Primer) 계열 — .code-block / .md-view pre의
+   라이트 표면(--color-surface-soft) 위에서 대비가 검증된 조합.
+   배경·패딩·폰트는 .code-block / .md-view pre 담당 — 여기선 토큰 글자색만.
    전 규칙을 .hljs 하위로 스코핑 — .hljs는 ui/code-block.ts와
    markdown-view 펜스만 생성하므로 평문 코드 블록(raw-view 등)에 누수 불가.
+   기본 비토큰 텍스트는 .code-block의 --color-body-strong(≈검정) 상속.
    ============================================================ */
 .hljs .hljs-comment,
 .hljs .hljs-quote,
 .hljs .hljs-meta {
-  color: #8b949e;
+  color: #6e7781;
 }
 .hljs .hljs-keyword,
 .hljs .hljs-selector-tag,
 .hljs .hljs-doctag {
-  color: #ff7b72;
+  color: #cf222e;
 }
 .hljs .hljs-string,
 .hljs .hljs-regexp {
-  color: #a5d6ff;
+  color: #0a3069;
 }
 .hljs .hljs-number,
 .hljs .hljs-literal,
 .hljs .hljs-attr,
 .hljs .hljs-attribute {
-  color: #79c0ff;
+  color: #0550ae;
 }
 .hljs .hljs-title,
 .hljs .hljs-title.function_ {
-  color: #d2a8ff;
+  color: #8250df;
 }
 .hljs .hljs-built_in,
 .hljs .hljs-type,
 .hljs .hljs-title.class_,
 .hljs .hljs-variable,
 .hljs .hljs-template-variable {
-  color: #ffa657;
+  color: #953800;
 }
 .hljs .hljs-name,
 .hljs .hljs-tag,
 .hljs .hljs-section {
-  color: #7ee787;
+  color: #116329;
 }
