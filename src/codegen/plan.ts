@@ -1,8 +1,10 @@
 /* 코드 생성 계약 — SSOT §7.
-   산출물은 정확히 4개(3세트): curl ① / JavaScript(브라우저 fetch ② + Node.js ③) / Python requests ④.
-   API 키는 컨텍스트에 절대 포함되지 않는다 — 모든 변형이 환경변수 ALLI_API_KEY 설정 완료를
-   전제로 생성된다(초기 설정 화면에서 사전 안내). 브라우저 변형은 키 리터럴/placeholder 없이
-   백엔드가 환경변수를 읽어 주입한 값(globalThis.ALLI_API_KEY)을 참조한다. */
+   산출물은 정확히 4개(3세트): curl ① / JavaScript(브라우저 ② + Node.js 프록시 ③) / Python requests ④.
+   JavaScript는 Model A 구조 — 브라우저(②)는 같은 출처 프록시(/api)를 키 없이 호출(오케스트레이션은
+   클라이언트), Node.js(③)는 플로우 무관 리버스 프록시로 키(process.env.ALLI_API_KEY)를 쥐고
+   Alli로 포워딩한다. curl/python은 서버·CLI측이라 Alli를 직접 호출.
+   API 키는 컨텍스트에 절대 포함되지 않으며(키는 ctx 밖), 어떤 변형에도 키 리터럴/placeholder를
+   넣지 않는다 — curl/node/python은 환경변수 ALLI_API_KEY 전제(초기 설정에서 사전 안내). */
 
 import type { RequestSpec } from '../core/request-spec';
 

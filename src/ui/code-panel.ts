@@ -1,4 +1,4 @@
-/* 코드 생성 패널 — 3세트 4개 (curl / JavaScript[브라우저·Node] / Python).
+/* 코드 생성 패널 — 3세트 4개 (JavaScript[브라우저·Node] / Python / curl).
    getPlan()이 현재 폼 상태로 CodegenPlan을 만들어 주면 refresh()가 재생성한다 —
    생성 코드는 항상 "현재 입력값 기준" (SSOT §7). */
 import { el, clear } from '../lib/dom';
@@ -17,7 +17,7 @@ export function codePanel(
   getCtx: () => CodegenContext,
 ): CodePanelHandle {
   let artifacts: GeneratedArtifact[] = [];
-  let activeSet: 'curl' | 'JavaScript' | 'Python' = 'curl';
+  let activeSet: 'curl' | 'JavaScript' | 'Python' = 'JavaScript';
   let jsVariant: 'browser' | 'node' = 'browser';
 
   const body = el('div', { class: 'stack', style: 'gap: 12px;' });
@@ -44,9 +44,9 @@ export function codePanel(
     body.appendChild(
       tabsBar(
         [
-          { id: 'curl', label: 'curl' },
           { id: 'JavaScript', label: 'JavaScript' },
           { id: 'Python', label: 'Python' },
+          { id: 'curl', label: 'curl' },
         ],
         activeSet,
         (id) => {
@@ -63,8 +63,8 @@ export function codePanel(
           {},
           segmented(
             [
-              { value: 'browser', label: '브라우저' },
-              { value: 'node', label: 'Node.js' },
+              { value: 'browser', label: '브라우저 (프론트)' },
+              { value: 'node', label: 'Node.js (프록시)' },
             ],
             jsVariant,
             (v) => {

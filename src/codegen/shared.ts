@@ -239,8 +239,15 @@ function extractNodeId(value) {
 
 /* ---------- 브라우저·Node 공용 JavaScript 빌더 ---------- */
 
-function jsHeadersBlock(ctx: CodegenContext): string {
-  const L = ['// 공통 헤더 — API-KEY 필수', 'const HEADERS = {', '  "API-KEY": API_KEY,'];
+function jsHeadersBlock(ctx: CodegenContext, target: JsTarget): string {
+  // 브라우저는 프록시가 키를 주입하므로 API-KEY를 싣지 않는다 (Model A)
+  const L = [
+    target === 'browser'
+      ? '// 공통 헤더 — API 키는 프록시가 주입하므로 브라우저에는 없음'
+      : '// 공통 헤더 — API-KEY 필수',
+    'const HEADERS = {',
+  ];
+  if (target !== 'browser') L.push('  "API-KEY": API_KEY,');
   if (ctx.ownUserId) {
     L.push(`  "OWN-USER-ID": encodeOwnUserId(${jsStr(ctx.ownUserId)}), // 비ASCII는 base64: 로 자동 변환`);
   }
@@ -540,56 +547,104 @@ function jsKbReplace(spec: RequestSpec, w: KbReplaceWrapper, target: JsTarget): 
   return L.join('\n');
 }
 
-/** 브라우저·Node 공용 JavaScript 코드 빌더 — 두 변형의 차이는 키 주입·파일 첨부·스트림 소비뿐 */
+/* ---------- Node.js 리버스 프록시 (Model A) ---------- */
+/** Node.js 변형 — 플로우 무관 범용 리버스 프록시.
+    브라우저(프론트)의 /api/* 요청을 Alli로 포워딩하며 API-KEY를 주입한다 (키는 이 서버에만 존재).
+    플로우 오케스트레이션은 브라우저(클라이언트)가 맡으므로 이 서버 코드는 모든 플로우에서 동일하다. */
+function renderNodeProxy(ctx: CodegenContext): string {
+  return [
+    '// Node.js 20+ 리버스 프록시 — 브라우저(프론트)의 /api/* 요청을 Alli 백엔드로 포워딩합니다.',
+    '// API 키는 이 서버에만 둡니다(process.env.ALLI_API_KEY) — 브라우저로 내려가지 않습니다.',
+    '// 외부 패키지 불필요(내장 http/fetch/stream만 사용). 실행: node proxy.mjs',
+    '',
+    'import { createServer } from "node:http";',
+    'import { Readable } from "node:stream";',
+    '',
+    `const BASE_URL = ${jsStr(trimBase(ctx.baseUrl))}; // 실제 Alli 백엔드 — 브라우저엔 노출되지 않음`,
+    'const API_KEY = process.env.ALLI_API_KEY;',
+    'if (!API_KEY) throw new Error("환경변수 ALLI_API_KEY가 설정되지 않았습니다 — 초기 설정 가이드를 참고하세요"); // fail-fast',
+    'const PORT = Number(process.env.PORT) || 8787;',
+    'const PREFIX = "/api"; // 브라우저가 호출하는 같은 출처 경로 접두사',
+    '',
+    '// 응답에서 제거할 헤더 — fetch가 본문을 이미 디코드하므로 길이/인코딩 헤더를 그대로 흘리면 깨진다',
+    'const STRIP = new Set(["content-encoding", "content-length", "transfer-encoding", "connection"]);',
+    '',
+    'const server = createServer(async (req, res) => {',
+    '  try {',
+    '    if (req.url !== PREFIX && !req.url.startsWith(PREFIX + "/")) {',
+    '      res.writeHead(404).end("Not found — /api 하위 경로만 처리합니다");',
+    '      return;',
+    '    }',
+    '    // /api 접두사를 떼고 Alli 경로로 매핑 (쿼리스트링 포함)',
+    '    const upstreamPath = req.url.slice(PREFIX.length) || "/";',
+    '    const hasBody = req.method !== "GET" && req.method !== "HEAD";',
+    '',
+    '    // 들어온 헤더를 그대로 전달하되 host 제거 + API-KEY 주입 (키는 여기서만)',
+    '    const headers = { ...req.headers };',
+    '    delete headers.host;',
+    '    delete headers.connection;',
+    '    delete headers["content-length"]; // fetch가 재계산',
+    '    headers["API-KEY"] = API_KEY; // 멀티파트 boundary 등 Content-Type은 원본 그대로 포워딩',
+    '',
+    '    const upstream = await fetch(BASE_URL + upstreamPath, {',
+    '      method: req.method,',
+    '      headers,',
+    '      body: hasBody ? Readable.toWeb(req) : undefined, // 요청 본문(JSON/멀티파트)을 스트림 그대로 전달',
+    '      duplex: hasBody ? "half" : undefined,',
+    '    });',
+    '',
+    '    // 상태/헤더를 그대로 내려보내고 응답 본문(스트리밍 포함)을 클라이언트로 pipe',
+    '    const outHeaders = {};',
+    '    upstream.headers.forEach((value, key) => {',
+    '      if (!STRIP.has(key.toLowerCase())) outHeaders[key] = value;',
+    '    });',
+    '    res.writeHead(upstream.status, outHeaders);',
+    '    if (upstream.body) {',
+    '      Readable.fromWeb(upstream.body).pipe(res); // 스트리밍 응답도 청크 단위로 그대로 흘려보냄',
+    '    } else {',
+    '      res.end();',
+    '    }',
+    '  } catch (err) {',
+    '    console.error(err);',
+    '    if (!res.headersSent) res.writeHead(502);',
+    '    res.end("Proxy error");',
+    '  }',
+    '});',
+    '',
+    'server.listen(PORT, () => {',
+    '  console.log(`프록시 실행 중: http://localhost:${PORT}${PREFIX}/  ->  ${BASE_URL}`);',
+    '});',
+    '',
+  ].join('\n');
+}
+
+/** 브라우저 JavaScript 빌더 — 같은 출처 Node 프록시(/api)를 키 없이 호출 (오케스트레이션은 클라이언트).
+    Node.js 변형은 renderNodeProxy로 분기 — 플로우 무관 프록시 서버라 본문 빌더를 거치지 않는다. */
 export function renderJsCode(plan: CodegenPlan, ctx: CodegenContext, target: JsTarget): string {
+  // Node.js 변형은 플로우 무관 리버스 프록시 (Model A) — 키를 쥐고 /api/* 를 Alli로 포워딩
+  if (target === 'node') return renderNodeProxy(ctx);
+
   const { spec, wrapper } = plan;
   const needsEncode = Boolean(ctx.ownUserId || ctx.userEmail);
-  const hasFileParts = multipartParts(spec).some((p) => p.kind === 'file');
   const chunks: string[] = [];
 
-  // 1) 프롤로그 — API 키 취급 방식이 두 변형의 핵심 차이 (§7-1)
-  //    공통 전제: 키는 백엔드 환경변수 ALLI_API_KEY에만 존재 (초기 설정 화면에서 사전 안내)
-  if (target === 'browser') {
-    chunks.push(
-      [
-        '/* 전제: API 키는 백엔드 환경변수 ALLI_API_KEY에만 둡니다 (초기 설정 가이드 참고).',
-        '   브라우저 소스/번들에 키 리터럴을 넣지 마세요 — 페이지를 서빙하는 백엔드가',
-        '   환경변수 값을 읽어 주입(예: 서버 템플릿이 globalThis.ALLI_API_KEY 설정)한다는 전제입니다.',
-        '   운영에서는 백엔드 프록시 경유를 권장합니다 — 키가 브라우저로 내려가지 않습니다. */',
-      ].join('\n'),
-    );
-    chunks.push(
-      [
-        `const BASE_URL = ${jsStr(trimBase(ctx.baseUrl))};`,
-        'const API_KEY = globalThis.ALLI_API_KEY; // 백엔드가 환경변수에서 읽어 주입한 값 — 소스에 키 리터럴 금지',
-        'if (!API_KEY) throw new Error("API 키가 주입되지 않았습니다 — 백엔드가 환경변수 ALLI_API_KEY 값을 주입해야 합니다 (초기 설정 가이드 참고)"); // fail-fast',
-      ].join('\n'),
-    );
-  } else {
-    const pro = [
-      '// Node 20+ — 내장 fetch/FormData/Blob 사용, 외부 패키지(form-data 등) 불필요',
-      '// 전제: 환경변수 ALLI_API_KEY 설정 완료 (초기 설정 가이드 참고) — 실행: node script.mjs',
-    ];
-    if (hasFileParts) {
-      pro.push('', 'import { readFile } from "node:fs/promises"; // Node 20+ 네이티브 — 파일 첨부용');
-    }
-    chunks.push(pro.join('\n'));
-    chunks.push(
-      [
-        `const BASE_URL = ${jsStr(trimBase(ctx.baseUrl))};`,
-        'const API_KEY = process.env.ALLI_API_KEY;',
-        'if (!API_KEY) throw new Error("환경변수 ALLI_API_KEY가 설정되지 않았습니다 — 초기 설정 가이드를 참고하세요"); // fail-fast',
-      ].join('\n'),
-    );
-  }
+  // 1) 프롤로그 — 브라우저는 같은 출처 프록시(/api)를 호출하고 키는 싣지 않는다
+  chunks.push(
+    [
+      '/* 전제: 이 코드는 같은 출처(same-origin)의 Node.js 프록시(/api)를 호출합니다.',
+      '   API 키는 프록시 서버에만 있고 브라우저로는 내려오지 않습니다 —',
+      '   별도 "Node.js" 탭의 리버스 프록시 서버를 함께 띄우세요. */',
+    ].join('\n'),
+  );
+  chunks.push('const BASE_URL = "/api"; // 같은 출처 Node 프록시 경로 — 프록시가 실제 Alli 백엔드로 포워딩');
 
-  // 2) 헤더 + 동봉 헬퍼 (§7-2, §7-4, §7-5)
+  // 2) 헤더 + 동봉 헬퍼
   if (needsEncode) chunks.push(JS_ENCODE_OWN_USER_ID);
-  chunks.push(jsHeadersBlock(ctx));
+  chunks.push(jsHeadersBlock(ctx, 'browser'));
   chunks.push(JS_RAISE_FOR_STATUS);
   if (spec.stream) chunks.push(JS_EXTRACT_JSON_VALUES);
 
-  // 3) wrapper별 본문
+  // 3) wrapper별 본문 (오케스트레이션은 브라우저=클라이언트에서 수행)
   switch (wrapper.kind) {
     case 'none':
       chunks.push(jsNoneMain(spec, target));

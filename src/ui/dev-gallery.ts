@@ -78,7 +78,7 @@ export function render(container: HTMLElement): void {
           banner('경고 배너 — 주의가 필요한 상황', 'warn'),
           field('텍스트 입력', textInput({ placeholder: '플레이스홀더' }), { hint: '힌트 문구' }),
           el('div', { class: 'row' }, segmented([{ value: 'sync', label: 'sync' }, { value: 'stream', label: 'stream' }], 'sync', () => {}), checkbox('체크박스')),
-          tabsBar([{ id: 'a', label: 'curl' }, { id: 'b', label: 'JavaScript' }, { id: 'c', label: 'Python' }], 'a', () => {}),
+          tabsBar([{ id: 'a', label: 'JavaScript' }, { id: 'b', label: 'Python' }, { id: 'c', label: 'curl' }], 'a', () => {}),
         ),
         section('에러 해설 패널', errorPanel(sampleError, 'connect')),
         section(
