@@ -44,14 +44,15 @@ function typeLabel(t: AppType): string {
   return TYPE_LABELS[t] ?? String(t);
 }
 
-/** run 응답의 citations[](§5.4) → Clue(출처 패널 어휘) 매핑 — kbId는 knowledgeBaseId, 없으면 url */
+/** run 응답의 citations[](§5.4, camelCase) → Clue(출처 패널 어휘, snake_case) 매핑 —
+    kb_id는 knowledgeBaseId, 없으면 url */
 function toClue(c: Citation): Clue {
   return {
-    clueId: c.clueId,
+    clue_id: c.clueId,
     source: c.source,
     title: c.title,
-    pageNo: c.pageNo,
-    kbId: c.knowledgeBaseId ?? c.url,
+    page_no: c.pageNo,
+    kb_id: c.knowledgeBaseId ?? c.url,
     text: c.text,
   };
 }

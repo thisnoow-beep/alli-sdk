@@ -4,7 +4,7 @@
    - 스트리밍 응답은 ReadableStream으로, 청크 경계를 픽스처 스크립트 그대로 내보냄
      (JSON 중간/문자열 중간/한글 멀티바이트 중간 분할 시나리오 포함)
    - 지연(latency) 시뮬레이션
-   - 실패 트리거: API-KEY 'invalid-key' 또는 누락 → 403/7001,
+   - 실패 트리거: API-KEY 'invalid-key' 또는 누락 → 401 + {error:{value:1013,name:'INVALID_TOKEN'}} (Gate G1 실측),
      run inputs 누락 → {"errors":"internal error. Expecting value: ..."} (§9-1),
      파일명에 'fail' 포함 업로드 → 인제스천 parsing_fail 시퀀스
    - ingestion_status는 kbId별로 호출마다 단계가 진행되는 상태 유지 */
@@ -260,18 +260,23 @@ function handleGenerativeAnswer(
   if (body?.threadId) full['fuQuestion'] = `재작성된 질문: ${body?.query ?? ''} (이전 맥락 반영)`;
 
   if (body?.mode === 'stream') {
-    // ⚠️ ASSUMPTION: GA 스트림 조각 형태 미문서 —
-    // 누적 answer가 점점 길어지는 부분 객체 3개 + 마지막 완전체(clues/threadId 포함)로 가정.
+    // 실측(§3.5, Gate G1 2026-06-16): NDJSON 델타 — 각 줄 {answer:<델타조각>, intent, clues}이고
+    // intent/clues/threadId/fuQuestion는 매 줄 반복된다. 조각 answer를 이어붙이면 전체 답변.
     const a = GA_ANSWER_MARKDOWN;
-    return streamResponse(
-      [
-        JSON.stringify({ answer: a.slice(0, Math.floor(a.length / 4)) }),
-        JSON.stringify({ answer: a.slice(0, Math.floor(a.length / 2)) }),
-        JSON.stringify({ answer: a }),
-        JSON.stringify(full),
-      ],
-      latencyMs,
-    );
+    const n = 4;
+    const size = Math.ceil(a.length / n);
+    const frags: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const frag: Record<string, unknown> = {
+        answer: a.slice(i * size, (i + 1) * size),
+        intent: 'SEARCH',
+        clues: GA_CLUES,
+      };
+      if (hasOwnUserId) frag['threadId'] = 'th-mock-1';
+      if (body?.threadId) frag['fuQuestion'] = `재작성된 질문: ${body?.query ?? ''} (이전 맥락 반영)`;
+      frags.push(JSON.stringify(frag));
+    }
+    return streamResponse(frags, latencyMs);
   }
   return jsonResponse(full);
 }
@@ -350,10 +355,13 @@ export function createMockFetch(opts: MockFetchOptions = {}): typeof fetch {
 
     await delay(latencyMs);
 
-    // 공통 인증: API-KEY 누락 또는 'invalid-key' → 403/7001 (§3.3)
+    // 공통 인증: API-KEY 누락 또는 'invalid-key' → 실측(§3.3, Gate G1) 401 + error-object
     const apiKey = headers.get('API-KEY');
     if (!apiKey || apiKey === 'invalid-key') {
-      return jsonResponse({ type: 'APIError', code: 7001, message: 'Invalid API Key' }, 403);
+      return jsonResponse(
+        { error: { value: 1013, name: 'INVALID_TOKEN' }, message: 'INVALID_TOKEN' },
+        401,
+      );
     }
 
     // 1. §5.1 프로젝트 (키 검증)
@@ -377,17 +385,22 @@ export function createMockFetch(opts: MockFetchOptions = {}): typeof fetch {
         list = at >= 0 ? list.slice(at + 1) : [];
       }
       const pageSize = Number(q.get('pageSize') ?? '50') || 50;
-      // ⚠️ ASSUMPTION: 목록 래퍼 키 미문서 — {"result":{"apps":[...]}} 가정 (Gate G1에서 검증)
-      return jsonResponse({ result: { apps: list.slice(0, pageSize) } });
+      // 실측(§5.2, Gate G1): { apps:[...], cursor } — result 래퍼 없음, cursor는 최상위(마지막 페이지 null).
+      const pageApps = list.slice(0, pageSize);
+      const nextCursor = list.length > pageSize ? (pageApps[pageApps.length - 1]?.cursor ?? null) : null;
+      // 실 응답에는 항목별 cursor가 없다 — 내부 페이징 토큰은 제거해 노출 (JSON.stringify가 undefined 키 생략)
+      const apps = pageApps.map((a) => ({ ...a, cursor: undefined }));
+      return jsonResponse({ apps, cursor: nextCursor });
     }
 
     // 3. §5.3 앱 단건
     const mApp = path.match(/^\/webapi\/v2\/apps\/([^/]+)$/);
     if (method === 'GET' && mApp) {
       const app = APP_FIXTURES.find((a) => a.id === decodeURIComponent(mApp[1]));
-      if (!app) return jsonResponse({ type: 'APIError', code: 7003, message: 'Invalid Parameter' }, 400);
-      // ⚠️ ASSUMPTION: 단건도 result 래핑으로 가정
-      return jsonResponse({ result: app });
+      // not-found 형태는 미검증 — error-object로 통일 (errors.ts가 처리)
+      if (!app) return jsonResponse({ error: { value: 7003, name: 'NOT_FOUND' }, message: 'NOT_FOUND' }, 400);
+      // 실측(§5.3, Gate G1): 단건은 bare 객체 (result 래퍼 없음). 항목별 cursor 없음.
+      return jsonResponse({ ...app, cursor: undefined });
     }
 
     // 4. §5.4 앱 실행 (v2 아님에 주의)
@@ -454,8 +467,11 @@ export function createMockFetch(opts: MockFetchOptions = {}): typeof fetch {
       return jsonResponse({ result: { id: convId, state: 'completed', chats: chats.slice(-20) } });
     }
 
-    // 매칭 실패 — §3.3 비표준 에러 형태 재현
-    return jsonResponse({ error: `Method Not Allowed ${method}: ${path}` }, 405);
+    // 매칭 실패 — 실측(§3.3, Gate G1): 405 plain text "Method not allowed" (text/html)
+    return new Response('Method not allowed', {
+      status: 405,
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
   };
 
   return mockFetch as typeof fetch;

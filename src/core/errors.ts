@@ -1,21 +1,38 @@
-/* 에러 파서 + 한글 해설 — SSOT §3.3.
-   표준 형태  : { "type": "APIError", "code": 7000, "message": "..." }
-   비표준 형태: { "error": "Method Not Allowed POST: ..." } / { "errors": "internal error. Expecting value: ..." }
-   둘 다 처리해야 한다 (§3.3 경고). */
+/* 에러 파서 + 한글 해설 — SSOT §3.3 (Gate G1 실 API 검증 반영, 2026-06-16).
+   실측 형태:
+   - 인증/권한: { "error": { "value": 1013, "name": "INVALID_TOKEN" }, "message": "INVALID_TOKEN" }  (HTTP 401)
+   - 요청 본문 오류: { "result": [], "errors": "content must be JSON deserializable!" }  (HTTP 400)
+   - 메서드 오류: "Method not allowed"  (HTTP 405, text/html — 비JSON)
+   - inputs 형식 오류(일부 앱): { "errors": "internal error. Expecting value: ..." }
+   back-compat: { "type":"APIError", "code":700x, "message" } / { "error":"<문자열>" } 도 계속 처리. */
 
-export type ErrorShape = 'standard' | 'error-key' | 'errors-key' | 'non-json' | 'network';
+export type ErrorShape =
+  | 'standard'
+  | 'error-object'
+  | 'error-key'
+  | 'errors-key'
+  | 'non-json'
+  | 'network';
 
 export interface AlliApiErrorOptions {
   httpStatus: number;
   code?: number;
+  /** error-object 형태의 error.name (예: 'INVALID_TOKEN') */
+  errorName?: string;
   shape: ErrorShape;
   rawBody: string;
 }
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
 export class AlliApiError extends Error {
   readonly httpStatus: number;
-  /** 7000~7004 (표준 형태일 때만) */
+  /** 숫자 코드 — error-object의 error.value(실측 1013 등) 또는 레거시 standard의 code */
   readonly code?: number;
+  /** error-object의 error.name (예: 'INVALID_TOKEN') */
+  readonly errorName?: string;
   readonly shape: ErrorShape;
   readonly rawBody: string;
 
@@ -24,6 +41,7 @@ export class AlliApiError extends Error {
     this.name = 'AlliApiError';
     this.httpStatus = opts.httpStatus;
     if (opts.code !== undefined) this.code = opts.code;
+    if (opts.errorName !== undefined) this.errorName = opts.errorName;
     this.shape = opts.shape;
     this.rawBody = opts.rawBody;
   }
@@ -44,7 +62,26 @@ export function parseAlliError(httpStatus: number, bodyText: string): AlliApiErr
   if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
     const body = parsed as Record<string, unknown>;
 
-    // 표준 형태: { type, code, message } — code는 숫자일 때만 신뢰 (§3.3)
+    // 실측 인증/권한 형태: { error: { value: 1013, name: 'INVALID_TOKEN' }, message } (§3.3, Gate G1)
+    // code는 error.value에 중첩되고 HTTP는 401 — top-level code 검사보다 먼저 처리해야 한다.
+    if (isRecord(body['error'])) {
+      const errObj = body['error'];
+      const value = typeof errObj['value'] === 'number' ? errObj['value'] : undefined;
+      const name = typeof errObj['name'] === 'string' ? errObj['name'] : undefined;
+      const message =
+        typeof body['message'] === 'string' && body['message'] !== ''
+          ? body['message']
+          : (name ?? fallbackMessage);
+      return new AlliApiError(message, {
+        httpStatus,
+        code: value,
+        errorName: name,
+        shape: 'error-object',
+        rawBody: bodyText,
+      });
+    }
+
+    // back-compat 표준 형태: { type, code, message } — code는 숫자일 때만 신뢰
     if (typeof body['code'] === 'number') {
       const message =
         typeof body['message'] === 'string' && body['message'] !== ''
@@ -58,7 +95,7 @@ export function parseAlliError(httpStatus: number, bodyText: string): AlliApiErr
       });
     }
 
-    // 비표준 형태 1: { "error": "Method Not Allowed POST: ..." }
+    // 비표준 형태 1: { "error": "Method Not Allowed POST: ..." } (문자열 error)
     if (typeof body['error'] === 'string') {
       return new AlliApiError(body['error'], { httpStatus, shape: 'error-key', rawBody: bodyText });
     }
@@ -120,6 +157,12 @@ export function explainError(e: unknown, ctx?: ErrorContext): ErrorExplanation {
   let titleKo: string;
   const hintsKo: string[] = [];
 
+  // 실측 인증 실패 = error.name 'INVALID_TOKEN' 또는 HTTP 401 (레거시 code 7001도 포용)
+  const isAuthError =
+    e.errorName === 'INVALID_TOKEN' ||
+    e.code === 7001 ||
+    (e.shape === 'error-object' && e.httpStatus === 401);
+
   if (e.shape === 'network') {
     titleKo = '네트워크 또는 CORS 차단 가능성';
     hintsKo.push(
@@ -127,7 +170,7 @@ export function explainError(e: unknown, ctx?: ErrorContext): ErrorExplanation {
       '인터넷·사내망 연결 확인',
       '브라우저 개발자도구 콘솔에서 CORS 메시지 확인 — JS에는 차단 상세가 노출되지 않음',
     );
-  } else if (e.code === 7001) {
+  } else if (isAuthError) {
     // Flow 1 §4: REST API 키와 JS 챗 위젯용 sdkKey 혼동이 가장 흔한 원인
     titleKo = 'API 키가 유효하지 않습니다';
     hintsKo.push(
@@ -157,7 +200,7 @@ export function explainError(e: unknown, ctx?: ErrorContext): ErrorExplanation {
     (ctx === 'ga' || ctx === 'apps' || ctx === 'run') &&
     e.httpStatus >= 400 &&
     e.httpStatus < 500 &&
-    e.code !== 7001
+    !isAuthError
   ) {
     hintsKo.push(
       '(가능성) App Market·Generative Answer는 계약 옵션 기능입니다 — 프로젝트에 활성화돼 있는지 계정 매니저를 통해 확인하세요',

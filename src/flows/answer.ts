@@ -301,9 +301,11 @@ export function render(container: HTMLElement): void {
     statusSlot.appendChild(sv.el);
     const ac = new AbortController();
     sv.start(() => ac.abort());
-    // GA 스트림은 sync와 동일 포맷 JSON 조각을 누적 전송(§3.5) — 마지막 완전체에서 추출
+    // GA 스트림(§3.5)은 NDJSON 델타 — 각 조각의 answer를 이어붙여야 전체 답변이 된다 (Gate G1 실측 2026-06-16).
+    // intent/clues/threadId/fuQuestion는 매 조각에 반복되므로 마지막 조각 값을 사용한다.
+    const answerParts: string[] = [];
+    let lastFragment: Record<string, unknown> | undefined;
     let lastJson: unknown;
-    let lastWithAnswer: unknown;
     let elapsed: number | undefined;
     try {
       for await (const ev of client.executeStream(spec, ac.signal)) {
@@ -313,12 +315,21 @@ export function render(container: HTMLElement): void {
           sv.push(ev);
           if (ev.type === 'json') {
             lastJson = ev.value;
-            if (isRecord(ev.value) && 'answer' in ev.value) lastWithAnswer = ev.value;
+            if (isRecord(ev.value)) {
+              lastFragment = ev.value;
+              if (typeof ev.value['answer'] === 'string') answerParts.push(ev.value['answer']);
+            }
           }
         }
       }
       sv.finish();
-      const finalValue = lastWithAnswer ?? lastJson;
+      // 델타 answer를 이어붙여 마지막 조각(메타 보유)을 보강 — answer 조각이 없으면 마지막 조각 그대로
+      const finalValue =
+        lastFragment !== undefined
+          ? answerParts.length > 0
+            ? { ...lastFragment, answer: answerParts.join('') }
+            : lastFragment
+          : lastJson;
       clear(statusSlot); // 답변은 턴 목록으로, 청크 피드는 Raw 트랜스크립트로 이관
       if (finalValue !== undefined) {
         handleResult(q, finalValue, sv.transcript());

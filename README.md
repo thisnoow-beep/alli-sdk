@@ -85,7 +85,7 @@ src/
 
 | 트리거 | 재현되는 것 |
 |---|---|
-| API 키에 `invalid-key` | 403 / code 7001 (키 오류 해설) |
+| API 키에 `invalid-key` | 401 / `INVALID_TOKEN` (키 오류 해설) — Gate G1 실측 형태 |
 | 변수 없이 실행 | `{"errors":"internal error. Expecting value…"}` — 실제 서버가 돌려주는 불친절한 에러 원문 재현 |
 | 앱 "레거시 요약" 실행 | `result.choices[]` 레거시 응답 형태 |
 | 업로드 파일명에 `fail` 포함 | 인제스천 `parsing_fail` → 롤백 경로 (Flow 5) |

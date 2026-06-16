@@ -22,7 +22,8 @@ export interface AppInfo {
 export interface ListAppsQuery {
   searchTerm?: string;
   categories?: string[];
-  type?: 'single_action' | 'skill';
+  // 실측 타입 분포: campaign/single_action/agent (skill은 구명칭). 필터 가능 값 확장.
+  type?: 'single_action' | 'skill' | 'campaign' | 'agent';
   published?: boolean;
   pageSize?: number;
   cursor?: string;
@@ -123,13 +124,15 @@ export interface GenerativeAnswerBody {
   [k: string]: unknown;
 }
 
+/** GA clues 항목 — 실측 필드명은 snake_case (§5.6, Gate G1 2026-06-16):
+    clue_id / source(DOCUMENT|FAQ|WEB) / title / page_no / kb_id / faq_id / text */
 export interface Clue {
-  clueId?: string;
-  source?: 'DOCUMENT' | 'FAQ' | (string & {});
+  clue_id?: string;
+  source?: 'DOCUMENT' | 'FAQ' | 'WEB' | (string & {});
   title?: string;
-  pageNo?: number;
-  kbId?: string;
-  faqId?: string;
+  page_no?: number;
+  kb_id?: string;
+  faq_id?: string;
   text?: string;
   [k: string]: unknown;
 }
@@ -140,8 +143,8 @@ export interface GaResponse {
   intent?: 'SEARCH' | 'END_OF_CONVERSATION' | (string & {});
   clues?: Clue[];
   threadId?: string;
-  /** 멀티턴 시 재작성된 질문 */
-  fuQuestion?: string;
+  /** 멀티턴 시 재작성된 질문 — 재작성이 없으면 실측상 null 반환 */
+  fuQuestion?: string | null;
   [k: string]: unknown;
 }
 

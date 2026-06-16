@@ -15,7 +15,7 @@ export function cluesPanel(clues: Clue[]): HTMLElement {
     { class: 'stack', style: 'gap: 0;' },
     el('div', { class: 't-caption muted', style: 'padding-bottom: 8px;' }, `출처 ${clues.length}건`),
     ...clues.map((c) => {
-      const id = c.kbId ?? c.faqId ?? '';
+      const id = c.kb_id ?? c.faq_id ?? '';
       return el(
         'div',
         { class: 'chat-row' },
@@ -24,7 +24,7 @@ export function cluesPanel(clues: Clue[]): HTMLElement {
           { class: 'row', style: 'gap: 8px;' },
           badge(SOURCE_LABELS[c.source ?? 'DOCUMENT'] ?? String(c.source), c.source === 'FAQ' ? 'on' : 'default'),
           el('span', { class: 't-title-sm' }, c.title ?? '(제목 없음)'),
-          c.pageNo !== undefined ? el('span', { class: 't-caption muted' }, `p.${c.pageNo}`) : null,
+          c.page_no !== undefined ? el('span', { class: 't-caption muted' }, `p.${c.page_no}`) : null,
           id
             ? el(
                 'span',

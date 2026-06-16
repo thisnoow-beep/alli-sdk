@@ -152,8 +152,9 @@ export function extractRunMessages(runResponse: unknown): ExtractedMessage[] {
 
 /* ---------- 스트림 텍스트 ---------- */
 
-/** 같은 객체 안에 여러 후보 키가 있으면 이 우선순위로 선택 */
-const STREAM_TEXT_KEYS = ['message', 'text', 'answer'] as const;
+/** 같은 객체 안에 여러 후보 키가 있으면 이 우선순위로 선택.
+    'content'는 run_conversation의 final_replaced_message 이벤트 본문 (Gate G1 실측). */
+const STREAM_TEXT_KEYS = ['message', 'text', 'answer', 'content'] as const;
 
 /** 스트림 JSON 조각에서 사람이 읽을 텍스트 후보 추출 (후보 키: message, text, answer — BFS).
     문자열 값은 tryExtractDraftJs 먼저 시도. 없으면 null. */

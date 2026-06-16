@@ -6,10 +6,10 @@ import type { AppInfo, ChatMessage, Citation, Clue, KbNode } from '../core/types
 
 /* ---------- §5.1 프로젝트 ---------- */
 
-/** 키 검증 용도로는 200 여부만 쓰이므로 최소 형태 (§5.1 — 스키마 미상세) */
-export const PROJECT_FIXTURE = {
-  result: { name: 'Mock Project', id: 'prj-mock-1' },
-} as const;
+/** 키 검증은 200 여부만 사용. 실측(§5.1, Gate G1): bare 배열 [{id,name,cognitiveSearchApiKey}] */
+export const PROJECT_FIXTURE = [
+  { id: 'prj-mock-1', name: 'Mock Project', cognitiveSearchApiKey: 'mock-cog-key' },
+] as const;
 
 /* ---------- §5.2~5.3 앱 ---------- */
 
@@ -126,17 +126,17 @@ export const GA_ANSWER_MARKDOWN = [
 
 export const GA_CLUES: Clue[] = [
   {
-    clueId: 'clue-ga-1',
+    clue_id: 'clue-ga-1',
     source: 'DOCUMENT',
     title: '취업규칙_v3.pdf',
-    pageNo: 12,
-    kbId: 'kb-001',
+    page_no: 12,
+    kb_id: 'kb-001',
     text: '제12조(연차휴가의 이월) 미사용 연차는 최대 5일까지 다음 해로 이월할 수 있다.',
   },
   {
     source: 'FAQ',
     title: '연차 이월',
-    faqId: 'faq-77',
+    faq_id: 'faq-77',
     text: '연차 이월 신청은 매년 12월 15일까지 인사팀에 제출합니다.',
   },
 ];

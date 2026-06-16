@@ -102,8 +102,8 @@ export function render(container: HTMLElement): void {
         section(
           '출처 패널',
           cluesPanel([
-            { source: 'DOCUMENT', title: '취업규칙_v3.pdf', pageNo: 12, kbId: 'kb-001', text: '연차휴가는 다음 해로 최대 10일까지 이월할 수 있다…' },
-            { source: 'FAQ', title: '연차 이월 문의', faqId: 'faq-77', text: '인사팀 답변: 이월 신청은 12월 말까지…' },
+            { source: 'DOCUMENT', title: '취업규칙_v3.pdf', page_no: 12, kb_id: 'kb-001', text: '연차휴가는 다음 해로 최대 10일까지 이월할 수 있다…' },
+            { source: 'FAQ', title: '연차 이월 문의', faq_id: 'faq-77', text: '인사팀 답변: 이월 신청은 12월 말까지…' },
           ]),
         ),
         section('스테퍼', steps.el),

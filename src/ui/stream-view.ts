@@ -1,6 +1,6 @@
 /* 스트림 뷰 — 실시간 청크 피드 + 추출 텍스트 + 중지(AbortController).
-   텍스트 패널은 "누적형 스트림"(이전 텍스트를 포함해 점점 길어지는 GA 패턴)을 감지하면
-   마지막 항목을 교체하고, 아니면 새 항목으로 추가한다 (§9-2 — 실제 프레이밍 미확정 대응). */
+   텍스트 패널: 새 조각이 이전 텍스트를 포함하면(누적형) 교체, 아니면(델타형 — GA NDJSON 스트림)
+   같은 버퍼에 이어붙인다 (§3.5, Gate G1 실측 2026-06-16). */
 import { el, clear } from '../lib/dom';
 import type { StreamEvent } from '../core/client';
 import { extractStreamText } from '../core/extract';
@@ -69,8 +69,10 @@ export function streamView(): StreamViewHandle {
         const text = extractStreamText(ev.value);
         if (text !== null && text !== '') {
           const last = texts[texts.length - 1];
-          if (last !== undefined && text.startsWith(last)) texts[texts.length - 1] = text;
-          else texts.push(text);
+          // 누적형이면 교체, 델타형(GA)이면 같은 버퍼에 이어붙인다 (§3.5, Gate G1)
+          if (last === undefined) texts.push(text);
+          else if (text.startsWith(last)) texts[texts.length - 1] = text;
+          else texts[texts.length - 1] = last + text;
           renderTexts();
         }
       }

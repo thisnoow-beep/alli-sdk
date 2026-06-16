@@ -36,36 +36,35 @@ beforeEach(() => {
 });
 
 describe('공통 인증', () => {
-  it('API-KEY가 invalid-key면 403 + code 7001', async () => {
+  it('API-KEY가 invalid-key면 401 + error-object INVALID_TOKEN (§3.3 Gate G1)', async () => {
     const res = await mf()(`${BASE}/webapi/v2/projects`, { headers: { 'API-KEY': 'invalid-key' } });
-    expect(res.status).toBe(403);
-    const body = (await res.json()) as { type: string; code: number };
-    expect(body.code).toBe(7001);
-    expect(body.type).toBe('APIError');
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as { error: { value: number; name: string }; message: string };
+    expect(body.error.value).toBe(1013);
+    expect(body.error.name).toBe('INVALID_TOKEN');
+    expect(body.message).toBe('INVALID_TOKEN');
   });
 
-  it('API-KEY 헤더 자체가 없어도 동일하게 403/7001', async () => {
+  it('API-KEY 헤더 자체가 없어도 동일하게 401/INVALID_TOKEN', async () => {
     const res = await mf()(`${BASE}/webapi/hashtags`);
-    expect(res.status).toBe(403);
-    expect(((await res.json()) as { code: number }).code).toBe(7001);
+    expect(res.status).toBe(401);
+    expect(((await res.json()) as { error: { name: string } }).error.name).toBe('INVALID_TOKEN');
   });
 
-  it('매칭되지 않는 경로는 405 + error 키 (비표준 에러 형태)', async () => {
+  it('매칭되지 않는 경로는 405 + plain text (실측 비표준 형태 §3.3 Gate G1)', async () => {
     const res = await mf()(`${BASE}/webapi/apps`, { method: 'POST', headers: KEY });
     expect(res.status).toBe(405);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain('Method Not Allowed');
-    expect(body.error).toContain('/webapi/apps');
+    expect(await res.text()).toBe('Method not allowed');
   });
 });
 
 describe('1. GET /webapi/v2/projects', () => {
-  it('200 + 프로젝트 정보', async () => {
+  it('200 + 프로젝트 정보 (bare 배열)', async () => {
     const res = await mf()(`${BASE}/webapi/v2/projects`, { headers: KEY });
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { result: { name: string; id: string } };
-    expect(body.result.name).toBe('Mock Project');
-    expect(body.result.id).toBe('prj-mock-1');
+    const body = (await res.json()) as { name: string; id: string }[];
+    expect(body[0].name).toBe('Mock Project');
+    expect(body[0].id).toBe('prj-mock-1');
   });
 
   it('상대 경로(input이 path 문자열)도 처리한다', async () => {
@@ -75,51 +74,52 @@ describe('1. GET /webapi/v2/projects', () => {
 });
 
 describe('2. GET /webapi/v2/apps', () => {
-  type AppsBody = { result: { apps: { id: string; cursor?: string }[] } };
+  type AppsBody = { apps: { id: string }[]; cursor: string | null };
 
   it('필터 없으면 픽스처 6개 전부', async () => {
     const res = await mf()(`${BASE}/webapi/v2/apps`, { headers: KEY });
     const body = (await res.json()) as AppsBody;
-    expect(body.result.apps).toHaveLength(APP_FIXTURES.length);
+    expect(body.apps).toHaveLength(APP_FIXTURES.length);
   });
 
   it('searchTerm/type/published 필터가 동작한다', async () => {
     const mock = mf();
     const byTerm = (await (await mock(`${BASE}/webapi/v2/apps?searchTerm=${encodeURIComponent('요약')}`, { headers: KEY })).json()) as AppsBody;
-    expect(byTerm.result.apps.map((a) => a.id).sort()).toEqual(['app-legacy-9', 'app-sum-001']);
+    expect(byTerm.apps.map((a) => a.id).sort()).toEqual(['app-legacy-9', 'app-sum-001']);
 
     const byType = (await (await mock(`${BASE}/webapi/v2/apps?type=skill`, { headers: KEY })).json()) as AppsBody;
-    expect(byType.result.apps.map((a) => a.id).sort()).toEqual(['app-doc-101', 'app-exp-102']);
+    expect(byType.apps.map((a) => a.id).sort()).toEqual(['app-doc-101', 'app-exp-102']);
 
     const byPub = (await (await mock(`${BASE}/webapi/v2/apps?published=false`, { headers: KEY })).json()) as AppsBody;
-    expect(byPub.result.apps.map((a) => a.id)).toEqual(['app-exp-102']);
+    expect(byPub.apps.map((a) => a.id)).toEqual(['app-exp-102']);
   });
 
-  it('pageSize/cursor 페이징 — 2페이지로 전체 회수', async () => {
+  it('pageSize/cursor 페이징 — 최상위 cursor로 2페이지 회수', async () => {
     const mock = mf();
     const p1 = (await (await mock(`${BASE}/webapi/v2/apps?pageSize=4`, { headers: KEY })).json()) as AppsBody;
-    expect(p1.result.apps).toHaveLength(4);
-    const cursor = p1.result.apps[3].cursor!;
-    const p2 = (await (await mock(`${BASE}/webapi/v2/apps?pageSize=4&cursor=${cursor}`, { headers: KEY })).json()) as AppsBody;
-    expect(p2.result.apps).toHaveLength(2);
-    const all = [...p1.result.apps, ...p2.result.apps].map((a) => a.id);
+    expect(p1.apps).toHaveLength(4);
+    expect(p1.cursor).not.toBeNull();
+    const p2 = (await (await mock(`${BASE}/webapi/v2/apps?pageSize=4&cursor=${p1.cursor}`, { headers: KEY })).json()) as AppsBody;
+    expect(p2.apps).toHaveLength(2);
+    expect(p2.cursor).toBeNull(); // 마지막 페이지
+    const all = [...p1.apps, ...p2.apps].map((a) => a.id);
     expect(new Set(all).size).toBe(6);
   });
 });
 
 describe('3. GET /webapi/v2/apps/{id}', () => {
-  it('단건 조회', async () => {
+  it('단건 조회 (bare 객체)', async () => {
     const res = await mf()(`${BASE}/webapi/v2/apps/app-doc-101`, { headers: KEY });
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { result: { id: string; type: string } };
-    expect(body.result.id).toBe('app-doc-101');
-    expect(body.result.type).toBe('skill');
+    const body = (await res.json()) as { id: string; type: string };
+    expect(body.id).toBe('app-doc-101');
+    expect(body.type).toBe('skill');
   });
 
-  it('없는 앱이면 400/7003', async () => {
+  it('없는 앱이면 400 + error-object', async () => {
     const res = await mf()(`${BASE}/webapi/v2/apps/no-such-app`, { headers: KEY });
     expect(res.status).toBe(400);
-    expect(((await res.json()) as { code: number }).code).toBe(7003);
+    expect(((await res.json()) as { error: { name: string } }).error.name).toBe('NOT_FOUND');
   });
 });
 
@@ -277,7 +277,7 @@ describe('6. POST /webapi/generative_answer', () => {
     const ga = (await res.json()) as {
       answer: string;
       intent: string;
-      clues: { source: string; kbId?: string; faqId?: string }[];
+      clues: { source: string; kb_id?: string; faq_id?: string }[];
       threadId?: string;
     };
     expect(ga.answer).toContain('<script>alert(1)</script>');
@@ -285,7 +285,7 @@ describe('6. POST /webapi/generative_answer', () => {
     expect(ga.intent).toBe('SEARCH');
     expect(ga.clues).toHaveLength(2);
     expect(ga.clues[0].source).toBe('DOCUMENT');
-    expect(ga.clues[1].faqId).toBe('faq-77');
+    expect(ga.clues[1].faq_id).toBe('faq-77');
     expect(ga.threadId).toBe('th-mock-1');
   });
 
@@ -309,7 +309,7 @@ describe('6. POST /webapi/generative_answer', () => {
     expect(ga.fuQuestion).toContain('재작성된 질문');
   });
 
-  it('stream — 누적 answer가 길어지는 조각 3개 + clues/threadId 포함 완전체', async () => {
+  it('stream — NDJSON 델타 조각(answer 델타) + 매 줄 clues/threadId, 이어붙이면 전체 답변 (§3.5 Gate G1)', async () => {
     const res = await mf()(`${BASE}/webapi/generative_answer`, {
       method: 'POST',
       headers: { ...JSON_HEADERS, 'OWN-USER-ID': 'EMP12345' },
@@ -319,13 +319,14 @@ describe('6. POST /webapi/generative_answer', () => {
     const docs = chunks.map(
       (c) => JSON.parse(new TextDecoder().decode(c)) as { answer: string; clues?: unknown[]; threadId?: string },
     );
-    expect(docs).toHaveLength(4);
-    expect(docs[0].answer.length).toBeLessThan(docs[1].answer.length);
-    expect(docs[1].answer.length).toBeLessThan(docs[2].answer.length);
-    expect(docs[2].answer).toBe(GA_ANSWER_MARKDOWN);
-    expect(docs[1].answer.startsWith(docs[0].answer)).toBe(true); // 누적형
-    expect(docs[3].clues).toHaveLength(2);
-    expect(docs[3].threadId).toBe('th-mock-1');
+    expect(docs.length).toBeGreaterThan(1);
+    // 델타형 — 다음 조각이 이전 조각을 포함하지 않는다(누적형 아님)
+    expect(docs[1].answer.startsWith(docs[0].answer)).toBe(false);
+    // 조각 answer를 이어붙이면 전체 답변
+    expect(docs.map((d) => d.answer).join('')).toBe(GA_ANSWER_MARKDOWN);
+    // intent/clues/threadId는 매 줄 반복
+    expect(docs[docs.length - 1].clues).toHaveLength(2);
+    expect(docs.every((d) => d.threadId === 'th-mock-1')).toBe(true);
   });
 });
 

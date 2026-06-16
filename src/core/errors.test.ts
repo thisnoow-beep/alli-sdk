@@ -21,6 +21,17 @@ describe('parseAlliError — 5가지 shape 파싱', () => {
     expect(e.message).toBe('HTTP 500');
   });
 
+  it("실측 인증 형태 { error:{value,name}, message } → shape 'error-object' (§3.3 Gate G1)", () => {
+    const raw = '{"error":{"value":1013,"name":"INVALID_TOKEN"},"message":"INVALID_TOKEN"}';
+    const e = parseAlliError(401, raw);
+    expect(e.shape).toBe('error-object');
+    expect(e.httpStatus).toBe(401);
+    expect(e.code).toBe(1013);
+    expect(e.errorName).toBe('INVALID_TOKEN');
+    expect(e.message).toBe('INVALID_TOKEN');
+    expect(e.rawBody).toBe(raw);
+  });
+
   it("비표준 error 키(문자열) → shape 'error-key'", () => {
     const raw = '{"error":"Method Not Allowed POST: /webapi/apps"}';
     const e = parseAlliError(405, raw);
@@ -101,6 +112,26 @@ describe('explainError — 한글 해설', () => {
 
   it("7001은 ctx 'ga'여도 계약 옵션 힌트 미포함", () => {
     const e = parseAlliError(403, '{"type":"APIError","code":7001,"message":"Invalid API Key"}');
+    const ex = explainError(e, 'ga');
+    expect(ex.hintsKo.join(' ')).not.toContain('계약 옵션');
+  });
+
+  it("실측 인증(error-object 401 INVALID_TOKEN) → 'API 키가 유효하지 않습니다' + sdkKey 힌트", () => {
+    const e = parseAlliError(
+      401,
+      '{"error":{"value":1013,"name":"INVALID_TOKEN"},"message":"INVALID_TOKEN"}',
+    );
+    const ex = explainError(e, 'connect');
+    expect(ex.titleKo).toBe('API 키가 유효하지 않습니다');
+    expect(ex.hintsKo.join(' ')).toContain('sdkKey');
+    expect(ex.hintsKo.join(' ')).toContain('Settings > General');
+  });
+
+  it("실측 인증은 ctx 'ga'여도 계약 옵션 힌트 미포함", () => {
+    const e = parseAlliError(
+      401,
+      '{"error":{"value":1013,"name":"INVALID_TOKEN"},"message":"INVALID_TOKEN"}',
+    );
     const ex = explainError(e, 'ga');
     expect(ex.hintsKo.join(' ')).not.toContain('계약 옵션');
   });

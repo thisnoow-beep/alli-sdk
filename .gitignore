@@ -2,5 +2,6 @@ node_modules/
 dist/
 .vite/
 *.local
+captures/
 .DS_Store
 Thumbs.db
